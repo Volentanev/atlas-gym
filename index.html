@@ -1,0 +1,1690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0f14" />
+<link rel="manifest" href="manifest.webmanifest" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<link rel="icon" type="image/png" href="icon-192.png" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Atlas" />
+<title>Atlas — Autonomous Training OS</title>
+<style>
+/* ============================================================= */
+/*  ATLAS — Autonomous Training Operating System                  */
+/*  Single-file, offline, localStorage-backed. No dependencies.   */
+/* ============================================================= */
+:root{
+  --bg:#0b0f14; --bg2:#0f151c; --panel:#131b24; --panel2:#182430;
+  --line:#22303c; --line2:#2c3d4c;
+  --ink:#e8eef4; --ink2:#9fb1c1; --ink3:#647688;
+  --accent:#7be0c8; --accent2:#5ec8ff; --lime:#b6f36a;
+  --warn:#ffce6b; --danger:#ff7b7b; --good:#6ee7a8;
+  --shadow:0 8px 30px rgba(0,0,0,.35);
+  --r:14px; --r2:10px;
+  --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  font-family:var(--sans); background:
+    radial-gradient(1200px 600px at 80% -10%, #12202a 0%, transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, #0f1a22 0%, transparent 55%),
+    var(--bg);
+  color:var(--ink); font-size:14.5px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit; cursor:pointer}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#1e2b37;border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- Layout ---------- */
+.app{display:grid; grid-template-columns:230px 1fr; min-height:100vh}
+.side{background:linear-gradient(180deg,#0d141b,#0b0f14); border-right:1px solid var(--line); padding:16px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:4px}
+.brand{display:flex; align-items:center; gap:10px; padding:6px 8px 14px}
+.brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#04121a;font-weight:800;font-size:18px;box-shadow:0 4px 14px rgba(94,200,255,.35)}
+.brand b{font-size:16px;letter-spacing:.3px}
+.brand small{display:block;color:var(--ink3);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase}
+.nav{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.nav a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;color:var(--ink2);text-decoration:none;font-weight:500;font-size:13.5px;border:1px solid transparent}
+.nav a .ic{width:18px;text-align:center;opacity:.9}
+.nav a:hover{background:var(--panel);color:var(--ink)}
+.nav a.on{background:linear-gradient(90deg,rgba(123,224,200,.14),rgba(94,200,255,.06));color:var(--ink);border-color:var(--line2)}
+.nav a .badge{margin-left:auto;font-size:10px;background:var(--accent);color:#04121a;border-radius:20px;padding:1px 7px;font-weight:700}
+.side .spacer{flex:1}
+.side .foot{font-size:11px;color:var(--ink3);padding:8px;border-top:1px solid var(--line)}
+
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,15,20,.82);backdrop-filter:blur(12px);z-index:20}
+.topbar h1{font-size:17px;margin:0;font-weight:650}
+.topbar .sub{color:var(--ink3);font-size:12px}
+.topbar .grow{flex:1}
+.pill{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:30px;padding:6px 12px;font-size:12.5px;color:var(--ink2)}
+.pill b{color:var(--ink)}
+.dot{width:8px;height:8px;border-radius:50%}
+.content{padding:22px 24px 60px;max-width:1180px;width:100%}
+
+/* ---------- Cards / primitives ---------- */
+.card{background:linear-gradient(180deg,var(--panel),var(--bg2));border:1px solid var(--line);border-radius:var(--r);padding:18px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 4px;font-size:14px;font-weight:650;letter-spacing:.2px}
+.card .desc{color:var(--ink3);font-size:12px;margin-bottom:14px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+/* ---------- Mobile bottom tab bar + "More" sheet (shown < 860px) ---------- */
+#menuBtn{display:none}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
+  background:rgba(13,20,27,.97);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+.tabbar .tb{flex:1;background:none;border:none;color:var(--ink3);display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 2px;border-radius:12px;font-size:10.5px;font-weight:600;min-height:50px;transition:color .15s}
+.tabbar .tb .ic{font-size:19px;line-height:1}
+.tabbar .tb.on{color:var(--accent)}
+.tabbar .tb.on .ic{filter:drop-shadow(0 0 8px rgba(123,224,200,.55))}
+.tabbar .tb:active{background:var(--panel)}
+.more-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:75;opacity:0;pointer-events:none;transition:.2s}
+.more-backdrop.open{opacity:1;pointer-events:auto}
+.moresheet{position:fixed;left:0;right:0;bottom:0;z-index:76;background:linear-gradient(180deg,var(--panel2),var(--panel));border-top:1px solid var(--line2);border-radius:22px 22px 0 0;box-shadow:0 -20px 50px rgba(0,0,0,.5);transform:translateY(110%);transition:transform .26s cubic-bezier(.2,.8,.2,1);padding:6px 12px calc(16px + env(safe-area-inset-bottom))}
+.moresheet.open{transform:none}
+.moresheet .grab{width:42px;height:4px;border-radius:4px;background:var(--line2);margin:9px auto 10px}
+.moresheet a{display:flex;align-items:center;gap:14px;padding:15px 12px;border-radius:12px;color:var(--ink);text-decoration:none;font-size:15px;font-weight:500;border-bottom:1px solid var(--line);cursor:pointer}
+.moresheet a:last-child{border-bottom:none}
+.moresheet a .ic{width:24px;text-align:center;color:var(--accent);font-size:18px}
+.moresheet a:active{background:var(--panel2)}
+
+@media(max-width:1080px){ .g4{grid-template-columns:repeat(2,1fr)} }
+@media(max-width:860px){
+  .app{grid-template-columns:1fr}
+  .side{display:none}
+  .tabbar{display:flex}
+  .topbar{padding:12px 15px;gap:10px}
+  .topbar h1{font-size:16px}
+  .topbar .sub{font-size:11px}
+  #readinessPill{display:none}
+  #feedBtnLabel{display:none}
+  .content{padding:16px 14px calc(92px + env(safe-area-inset-bottom))}
+  .g2,.g3{grid-template-columns:1fr}
+  .g4{grid-template-columns:1fr 1fr}
+  .drawer{width:100%}
+  .split{grid-template-columns:1fr}
+  .cond-top{flex-wrap:wrap;gap:8px;padding:12px 14px}
+  .cond-top b{font-size:14px}
+  .cond-body{padding:16px 12px 30px}
+  .rpe-scale button{width:44px;height:44px}
+  .card{padding:15px}
+}
+@media(max-width:400px){
+  .kpi{font-size:22px}
+  .content{padding-left:12px;padding-right:12px}
+  .tabbar .tb{font-size:10px}
+}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.between{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.muted{color:var(--ink3)} .dim{color:var(--ink2)}
+.kpi{font-family:var(--mono);font-size:26px;font-weight:600;letter-spacing:-.5px}
+.kpi.sm{font-size:20px}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:20px;background:var(--panel2);border:1px solid var(--line);color:var(--ink2)}
+.tag.acc{color:var(--accent);border-color:rgba(123,224,200,.3);background:rgba(123,224,200,.08)}
+.tag.warn{color:var(--warn);border-color:rgba(255,206,107,.3);background:rgba(255,206,107,.08)}
+.tag.dng{color:var(--danger);border-color:rgba(255,123,123,.3);background:rgba(255,123,123,.08)}
+.tag.good{color:var(--good);border-color:rgba(110,231,168,.3);background:rgba(110,231,168,.08)}
+
+.btn{background:var(--panel2);border:1px solid var(--line2);color:var(--ink);border-radius:10px;padding:9px 14px;font-size:13px;font-weight:550;display:inline-flex;align-items:center;gap:8px;transition:.12s}
+.btn:hover{border-color:var(--accent);background:#1c2a36}
+.btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04121a;border:none;font-weight:700}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;border-color:var(--line)}
+.btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+.btn.danger{border-color:rgba(255,123,123,.4);color:var(--danger)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.block{width:100%;justify-content:center}
+
+input,textarea,select{font-family:inherit;background:var(--bg);border:1px solid var(--line2);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:13.5px;width:100%}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:76px;line-height:1.5}
+label.fld{display:block;font-size:12px;color:var(--ink2);margin:0 0 6px}
+.field{margin-bottom:14px}
+
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:22px;border:1px solid var(--line2);background:var(--panel);color:var(--ink2);font-size:12.5px;cursor:pointer;user-select:none}
+.chip.on{background:rgba(123,224,200,.12);border-color:var(--accent);color:var(--ink)}
+.chip:hover{border-color:var(--accent)}
+
+.bar{height:8px;border-radius:6px;background:#0a1219;overflow:hidden;border:1px solid var(--line)}
+.bar > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:3px}
+.seg button{background:transparent;border:none;color:var(--ink2);padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:600}
+.seg button.on{background:var(--panel2);color:var(--ink)}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--ink3);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+tr:last-child td{border-bottom:none}
+
+/* ---------- Agent feed drawer ---------- */
+.drawer{position:fixed;top:0;right:0;height:100vh;width:380px;background:var(--bg2);border-left:1px solid var(--line);box-shadow:-20px 0 40px rgba(0,0,0,.4);transform:translateX(100%);transition:.22s;z-index:80;display:flex;flex-direction:column}
+.drawer.open{transform:none}
+.drawer .dh{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.drawer .body{flex:1;overflow:auto;padding:12px 16px}
+.evt{border-left:2px solid var(--line2);padding:8px 0 12px 12px;position:relative;margin-left:4px}
+.evt:before{content:'';position:absolute;left:-5px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--accent2)}
+.evt.auto:before{background:var(--lime)} .evt.suggest:before{background:var(--warn)} .evt.block:before{background:var(--danger)}
+.evt .who{font-size:11px;color:var(--accent);font-weight:600;letter-spacing:.3px}
+.evt .msg{font-size:12.5px;margin:2px 0}
+.evt .meta{font-size:10.5px;color:var(--ink3);display:flex;gap:8px;flex-wrap:wrap;margin-top:3px}
+.conf{display:inline-flex;align-items:center;gap:4px}
+.conf b{font-family:var(--mono)}
+
+/* ---------- Conductor ---------- */
+.conductor{position:fixed;inset:0;background:radial-gradient(900px 500px at 50% -5%,#12222b,transparent),var(--bg);z-index:100;display:none;flex-direction:column}
+.conductor.on{display:flex}
+.cond-top{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
+.cond-body{flex:1;overflow:auto;display:grid;place-items:center;padding:24px}
+.cond-card{width:min(560px,94vw);text-align:center}
+.timer-ring{position:relative;width:200px;height:200px;margin:6px auto 10px}
+.timer-ring svg{transform:rotate(-90deg)}
+.timer-ring .t{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--mono);font-size:40px;font-weight:600}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px;margin:14px 0}
+.setbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 6px;font-size:12px}
+.setbox.done{border-color:var(--good);background:rgba(110,231,168,.06)}
+.setbox.active{border-color:var(--accent);box-shadow:0 0 0 2px rgba(123,224,200,.15)}
+.setbox .w{font-family:var(--mono);font-size:16px;font-weight:600}
+.rpe-scale{display:flex;gap:5px;justify-content:center;margin:8px 0}
+.rpe-scale button{width:38px;height:38px;border-radius:9px;border:1px solid var(--line2);background:var(--panel);color:var(--ink2);font-weight:700;font-family:var(--mono)}
+.rpe-scale button.on{background:var(--accent);color:#04121a;border-color:var(--accent)}
+.cue{background:linear-gradient(135deg,rgba(94,200,255,.1),rgba(123,224,200,.05));border:1px solid var(--line2);border-radius:12px;padding:12px 16px;font-size:13.5px;margin:12px 0;min-height:20px}
+.mini-list{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin-top:12px}
+.mini-list span{font-size:11px;padding:4px 9px;border-radius:8px;background:var(--panel);border:1px solid var(--line);color:var(--ink3)}
+.mini-list span.now{color:var(--accent);border-color:var(--accent)}
+.mini-list span.done{color:var(--ink3);text-decoration:line-through;opacity:.6}
+
+/* exercise block */
+.exblk{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--panel);margin-bottom:10px}
+.exblk .exh{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.exblk .exh b{font-size:14px}
+.setrow{display:grid;grid-template-columns:36px 1fr 1fr 60px;gap:8px;align-items:center;padding:5px 0;border-top:1px dashed var(--line)}
+.setrow input{padding:6px 8px;text-align:center;font-family:var(--mono)}
+.setrow .sn{color:var(--ink3);font-family:var(--mono);font-size:12px}
+
+.empty{text-align:center;padding:40px 20px;color:var(--ink3)}
+.empty .big{font-size:34px;margin-bottom:8px;opacity:.5}
+.hidden{display:none!important}
+.help{font-size:11.5px;color:var(--ink3);margin-top:6px;line-height:1.5}
+.rationale{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--ink2);margin-top:8px}
+.rationale b{color:var(--ink)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:800px){.split{grid-template-columns:1fr}}
+.daycol{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+.daycol.today{border-color:var(--accent);box-shadow:0 0 0 1px rgba(123,224,200,.2)}
+.daycol .dt{font-size:12px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;justify-content:space-between}
+.exline{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.exline:last-child{border:none}
+.exline .m{color:var(--ink3);font-family:var(--mono);font-size:11.5px}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line2);border-radius:12px;padding:12px 18px;box-shadow:var(--shadow);z-index:200;font-size:13px;display:flex;align-items:center;gap:10px;opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+svg.spark{display:block}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--ink3);flex-wrap:wrap}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.hr{height:1px;background:var(--line);margin:14px 0;border:0}
+.slider-row{display:flex;align-items:center;gap:12px}
+input[type=range]{-webkit-appearance:none;height:6px;background:#0a1219;border-radius:6px;border:1px solid var(--line);padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--accent);border:2px solid #04121a;cursor:pointer}
+.mode-badge{font-size:10px;padding:2px 7px;border-radius:6px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.mode-auto{background:rgba(182,243,106,.15);color:var(--lime)}
+.mode-suggest{background:rgba(255,206,107,.15);color:var(--warn)}
+.mode-off{background:rgba(100,118,136,.15);color:var(--ink3)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="side" id="side">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div><b>Atlas</b><small>Training OS</small></div>
+    </div>
+    <nav class="nav" id="nav">
+      <a data-view="dash" class="on"><span class="ic">◎</span> Dashboard</a>
+      <a data-view="mission"><span class="ic">✦</span> Mission Mode</a>
+      <a data-view="program"><span class="ic">▤</span> Programme</a>
+      <a data-view="progress"><span class="ic">📈</span> Progress</a>
+      <a data-view="physique"><span class="ic">📸</span> Physique Check</a>
+      <a data-view="recovery"><span class="ic">♥</span> Recovery</a>
+      <a data-view="twin"><span class="ic">⧉</span> Digital Twin</a>
+      <a data-view="coaches"><span class="ic">⚑</span> Escalation</a>
+      <a data-view="agents"><span class="ic">⚙</span> Agents &amp; Policy</a>
+      <a data-view="settings"><span class="ic">☰</span> Settings</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="foot">Deterministic engine · confidence-aware · offline. Data stays on this device.</div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <button class="btn ghost sm hidden" id="menuBtn" onclick="document.getElementById('side').classList.toggle('open')">☰</button>
+      <div>
+        <h1 id="viewTitle">Dashboard</h1>
+        <div class="sub" id="viewSub">Your autonomous training companion</div>
+      </div>
+      <div class="grow"></div>
+      <span class="pill" id="readinessPill" title="Recovery governor estimate"><span class="dot" style="background:var(--good)"></span> Readiness <b id="readVal">—</b></span>
+      <button class="btn sm" onclick="toggleDrawer()"><span class="ic">◱</span><span id="feedBtnLabel"> Agent feed </span><span class="tag acc" id="feedCount" style="padding:1px 7px">0</span></button>
+    </div>
+    <div class="content" id="content"><!-- rendered --></div>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="tabbar" id="tabbar">
+  <button class="tb on" data-view="dash" onclick="nav('dash')"><span class="ic">◎</span>Home</button>
+  <button class="tb" data-view="mission" onclick="nav('mission')"><span class="ic">✦</span>Mission</button>
+  <button class="tb" data-view="program" onclick="nav('program')"><span class="ic">▤</span>Plan</button>
+  <button class="tb" data-view="recovery" onclick="nav('recovery')"><span class="ic">♥</span>Recovery</button>
+  <button class="tb" data-view="more" onclick="openMore()"><span class="ic">⋯</span>More</button>
+</nav>
+<div class="more-backdrop" id="moreBackdrop" onclick="closeMore()"></div>
+<div class="moresheet" id="moresheet">
+  <div class="grab"></div>
+  <a onclick="nav('progress')"><span class="ic">📈</span> Progress</a>
+  <a onclick="nav('physique')"><span class="ic">📸</span> Physique Check</a>
+  <a onclick="nav('twin')"><span class="ic">⧉</span> Digital Twin</a>
+  <a onclick="nav('coaches')"><span class="ic">⚑</span> Human Escalation</a>
+  <a onclick="nav('agents')"><span class="ic">⚙</span> Agents &amp; Policy</a>
+  <a onclick="nav('settings')"><span class="ic">☰</span> Settings</a>
+</div>
+
+<!-- AGENT FEED DRAWER -->
+<div class="drawer" id="drawer">
+  <div class="dh">
+    <b>Agent activity</b>
+    <span class="muted" style="font-size:11px">audit trail</span>
+    <div style="flex:1"></div>
+    <button class="btn ghost sm" onclick="toggleDrawer()">✕</button>
+  </div>
+  <div class="body" id="feed"></div>
+</div>
+
+<!-- LIVE CONDUCTOR OVERLAY -->
+<div class="conductor" id="conductor"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   ATLAS — Autonomous Training OS
+   Architecture (per the product brief):
+   - Deterministic TRAINING ENGINE: movement patterns, muscles,
+     equipment, substitution, progression, program generation.
+   - AGENTS orchestrate actions under a POLICY layer (auto/suggest/off),
+     every decision written to an AUDIT trail with a CONFIDENCE band.
+   - No LLM required: intent parsing is rule-based & offline. Hooks are
+     marked //LLM: where a language model would enhance the experience.
+   ================================================================ */
+
+/* ---------------------------------------------------------------
+   1. DOMAIN DATA — muscles, patterns, exercises
+   --------------------------------------------------------------- */
+const MUSCLES = ['chest','lats','upperBack','frontDelts','sideDelts','rearDelts','biceps','triceps','quads','hamstrings','glutes','calves','core','forearms'];
+const MUSCLE_LABEL = {chest:'Chest',lats:'Lats',upperBack:'Upper back',frontDelts:'Front delts',sideDelts:'Side delts',rearDelts:'Rear delts',biceps:'Biceps',triceps:'Triceps',quads:'Quads',hamstrings:'Hamstrings',glutes:'Glutes',calves:'Calves',core:'Core',forearms:'Forearms'};
+// Movement patterns are the backbone of substitution & balance
+const PATTERNS = ['squat','hinge','lunge','hpush','vpush','hpull','vpull','core','calf','isolation'];
+const EQUIP_ALL = ['barbell','dumbbell','machine','cable','bodyweight','kettlebell','smith','bands'];
+
+// Exercise DB. contra = joints/areas an exercise loads & might aggravate.
+// pop = relative popularity (queue contention heuristic: higher = more likely occupied at a busy gym)
+const EX = [
+  // --- Squat pattern
+  {id:'bb_backsquat',n:'Barbell Back Squat',p:'squat',eq:'barbell',pri:['quads','glutes'],sec:['hamstrings','core'],comp:1,uni:0,dif:3,contra:['knee','lowerback'],pop:.9},
+  {id:'bb_frontsquat',n:'Front Squat',p:'squat',eq:'barbell',pri:['quads'],sec:['glutes','core'],comp:1,uni:0,dif:3,contra:['knee','wrist'],pop:.5},
+  {id:'goblet',n:'Goblet Squat',p:'squat',eq:'dumbbell',pri:['quads','glutes'],sec:['core'],comp:1,uni:0,dif:1,contra:['knee'],pop:.4},
+  {id:'legpress',n:'Leg Press',p:'squat',eq:'machine',pri:['quads','glutes'],sec:['hamstrings'],comp:1,uni:0,dif:1,contra:['knee'],pop:.6},
+  {id:'hacksquat',n:'Hack Squat',p:'squat',eq:'machine',pri:['quads'],sec:['glutes'],comp:1,uni:0,dif:2,contra:['knee'],pop:.4},
+  {id:'smith_squat',n:'Smith Machine Squat',p:'squat',eq:'smith',pri:['quads','glutes'],sec:['hamstrings'],comp:1,uni:0,dif:1,contra:['knee'],pop:.3},
+  // --- Hinge
+  {id:'deadlift',n:'Conventional Deadlift',p:'hinge',eq:'barbell',pri:['hamstrings','glutes'],sec:['lats','upperBack','core'],comp:1,uni:0,dif:3,contra:['lowerback'],pop:.7},
+  {id:'rdl',n:'Romanian Deadlift',p:'hinge',eq:'barbell',pri:['hamstrings','glutes'],sec:['lowerback'],comp:1,uni:0,dif:2,contra:['lowerback'],pop:.5},
+  {id:'db_rdl',n:'Dumbbell RDL',p:'hinge',eq:'dumbbell',pri:['hamstrings','glutes'],sec:['core'],comp:1,uni:0,dif:1,contra:['lowerback'],pop:.35},
+  {id:'hipthrust',n:'Hip Thrust',p:'hinge',eq:'barbell',pri:['glutes'],sec:['hamstrings'],comp:1,uni:0,dif:1,contra:[],pop:.5},
+  {id:'backext',n:'Back Extension',p:'hinge',eq:'bodyweight',pri:['hamstrings','glutes'],sec:['lowerback'],comp:0,uni:0,dif:1,contra:[],pop:.3},
+  {id:'kb_swing',n:'Kettlebell Swing',p:'hinge',eq:'kettlebell',pri:['glutes','hamstrings'],sec:['core'],comp:1,uni:0,dif:2,contra:['lowerback'],pop:.25},
+  // --- Lunge / unilateral
+  {id:'bulgarian',n:'Bulgarian Split Squat',p:'lunge',eq:'dumbbell',pri:['quads','glutes'],sec:['hamstrings'],comp:1,uni:1,dif:2,contra:['knee'],pop:.35},
+  {id:'walk_lunge',n:'Walking Lunge',p:'lunge',eq:'dumbbell',pri:['quads','glutes'],sec:['hamstrings'],comp:1,uni:1,dif:2,contra:['knee'],pop:.3},
+  {id:'step_up',n:'Step-Up',p:'lunge',eq:'dumbbell',pri:['quads','glutes'],sec:[],comp:1,uni:1,dif:1,contra:['knee'],pop:.2},
+  {id:'reverse_lunge',n:'Reverse Lunge',p:'lunge',eq:'bodyweight',pri:['quads','glutes'],sec:[],comp:1,uni:1,dif:1,contra:['knee'],pop:.2},
+  // --- Horizontal push
+  {id:'bench',n:'Barbell Bench Press',p:'hpush',eq:'barbell',pri:['chest'],sec:['triceps','frontDelts'],comp:1,uni:0,dif:2,contra:['shoulder','elbow'],pop:.95},
+  {id:'db_bench',n:'Dumbbell Bench Press',p:'hpush',eq:'dumbbell',pri:['chest'],sec:['triceps','frontDelts'],comp:1,uni:0,dif:2,contra:['shoulder'],pop:.55},
+  {id:'incline_db',n:'Incline DB Press',p:'hpush',eq:'dumbbell',pri:['chest','frontDelts'],sec:['triceps'],comp:1,uni:0,dif:2,contra:['shoulder'],pop:.5},
+  {id:'machine_press',n:'Chest Press Machine',p:'hpush',eq:'machine',pri:['chest'],sec:['triceps'],comp:1,uni:0,dif:1,contra:['shoulder'],pop:.45},
+  {id:'pushup',n:'Push-Up',p:'hpush',eq:'bodyweight',pri:['chest'],sec:['triceps','core'],comp:1,uni:0,dif:1,contra:['wrist'],pop:.15},
+  {id:'cable_fly',n:'Cable Fly',p:'hpush',eq:'cable',pri:['chest'],sec:[],comp:0,uni:0,dif:1,contra:['shoulder'],pop:.35},
+  // --- Vertical push
+  {id:'ohp',n:'Overhead Press',p:'vpush',eq:'barbell',pri:['frontDelts'],sec:['triceps','sideDelts'],comp:1,uni:0,dif:2,contra:['shoulder'],pop:.5},
+  {id:'db_shoulder',n:'Seated DB Shoulder Press',p:'vpush',eq:'dumbbell',pri:['frontDelts','sideDelts'],sec:['triceps'],comp:1,uni:0,dif:1,contra:['shoulder'],pop:.45},
+  {id:'machine_ohp',n:'Shoulder Press Machine',p:'vpush',eq:'machine',pri:['frontDelts'],sec:['triceps'],comp:1,uni:0,dif:1,contra:['shoulder'],pop:.35},
+  {id:'lateral_raise',n:'Lateral Raise',p:'vpush',eq:'dumbbell',pri:['sideDelts'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.4},
+  // --- Vertical pull
+  {id:'pullup',n:'Pull-Up',p:'vpull',eq:'bodyweight',pri:['lats'],sec:['biceps','upperBack'],comp:1,uni:0,dif:3,contra:['elbow','shoulder'],pop:.4},
+  {id:'latpull',n:'Lat Pulldown',p:'vpull',eq:'machine',pri:['lats'],sec:['biceps'],comp:1,uni:0,dif:1,contra:[],pop:.6},
+  {id:'assisted_pullup',n:'Assisted Pull-Up',p:'vpull',eq:'machine',pri:['lats'],sec:['biceps'],comp:1,uni:0,dif:1,contra:[],pop:.3},
+  // --- Horizontal pull
+  {id:'bb_row',n:'Barbell Row',p:'hpull',eq:'barbell',pri:['upperBack','lats'],sec:['biceps','rearDelts'],comp:1,uni:0,dif:2,contra:['lowerback'],pop:.5},
+  {id:'db_row',n:'One-Arm DB Row',p:'hpull',eq:'dumbbell',pri:['lats','upperBack'],sec:['biceps'],comp:1,uni:1,dif:1,contra:[],pop:.4},
+  {id:'cable_row',n:'Seated Cable Row',p:'hpull',eq:'cable',pri:['upperBack','lats'],sec:['biceps','rearDelts'],comp:1,uni:0,dif:1,contra:[],pop:.5},
+  {id:'chest_row',n:'Chest-Supported Row',p:'hpull',eq:'machine',pri:['upperBack','lats'],sec:['rearDelts'],comp:1,uni:0,dif:1,contra:[],pop:.4},
+  {id:'facepull',n:'Face Pull',p:'hpull',eq:'cable',pri:['rearDelts','upperBack'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.3},
+  // --- Isolation
+  {id:'legext',n:'Leg Extension',p:'isolation',eq:'machine',pri:['quads'],sec:[],comp:0,uni:0,dif:1,contra:['knee'],pop:.5},
+  {id:'legcurl',n:'Lying Leg Curl',p:'isolation',eq:'machine',pri:['hamstrings'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.5},
+  {id:'bicep_curl',n:'Dumbbell Curl',p:'isolation',eq:'dumbbell',pri:['biceps'],sec:['forearms'],comp:0,uni:0,dif:1,contra:['elbow'],pop:.45},
+  {id:'cable_curl',n:'Cable Curl',p:'isolation',eq:'cable',pri:['biceps'],sec:[],comp:0,uni:0,dif:1,contra:['elbow'],pop:.35},
+  {id:'tricep_push',n:'Cable Triceps Pushdown',p:'isolation',eq:'cable',pri:['triceps'],sec:[],comp:0,uni:0,dif:1,contra:['elbow'],pop:.45},
+  {id:'skull',n:'Skullcrusher',p:'isolation',eq:'barbell',pri:['triceps'],sec:[],comp:0,uni:0,dif:1,contra:['elbow'],pop:.3},
+  {id:'rear_fly',n:'Reverse Pec Deck',p:'isolation',eq:'machine',pri:['rearDelts'],sec:['upperBack'],comp:0,uni:0,dif:1,contra:[],pop:.3},
+  // --- Core
+  {id:'plank',n:'Plank',p:'core',eq:'bodyweight',pri:['core'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.2},
+  {id:'hang_leg',n:'Hanging Leg Raise',p:'core',eq:'bodyweight',pri:['core'],sec:[],comp:0,uni:0,dif:2,contra:['shoulder'],pop:.2},
+  {id:'cable_crunch',n:'Cable Crunch',p:'core',eq:'cable',pri:['core'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.25},
+  {id:'pallof',n:'Pallof Press',p:'core',eq:'cable',pri:['core'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.15},
+  // --- Calves
+  {id:'calf_raise',n:'Standing Calf Raise',p:'calf',eq:'machine',pri:['calves'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.25},
+  {id:'seated_calf',n:'Seated Calf Raise',p:'calf',eq:'machine',pri:['calves'],sec:[],comp:0,uni:0,dif:1,contra:[],pop:.2},
+];
+const EXBYID = Object.fromEntries(EX.map(e=>[e.id,e]));
+
+// Goals shape rep ranges, RPE targets, rest, and volume.
+const GOALS = {
+  strength:{label:'Build strength',reps:[4,6],rpe:8,rest:180,volMult:.85,emphasis:'heavy compounds, longer rest, lower reps'},
+  hypertrophy:{label:'Build muscle',reps:[8,12],rpe:8,rest:105,volMult:1.1,emphasis:'moderate reps, high quality volume'},
+  fatloss:{label:'Lose fat / conditioning',reps:[10,15],rpe:8,rest:70,volMult:1.0,emphasis:'density, shorter rest, full-body'},
+  general:{label:'General fitness',reps:[8,12],rpe:7,rest:90,volMult:.9,emphasis:'balanced, sustainable'},
+};
+const EXPERIENCE = {beginner:{label:'Beginner (<1yr)',maxDif:2,setsAdj:-1},intermediate:{label:'Intermediate (1-3yr)',maxDif:3,setsAdj:0},advanced:{label:'Advanced (3yr+)',maxDif:3,setsAdj:1}};
+
+// Split templates: each day = ordered movement "slots"
+const SPLITS = {
+  2:[['Full Body A',['squat','hpush','hpull','core']],['Full Body B',['hinge','vpush','vpull','core']]],
+  3:[['Full Body A',['squat','hpush','hpull','isoT']],['Full Body B',['hinge','vpull','vpush','isoB']],['Full Body C',['lunge','hpush','hpull','core']]],
+  4:[['Upper A',['hpush','hpull','vpush','vpull','isoB','isoT']],['Lower A',['squat','hinge','lunge','calf']],['Upper B',['vpush','vpull','hpush','hpull','isoB','core']],['Lower B',['hinge','squat','isoQ','isoH','calf']]],
+  5:[['Push',['hpush','vpush','hpush','isoT','isoSD']],['Pull',['vpull','hpull','isoRD','isoB']],['Legs',['squat','hinge','lunge','isoQ','calf']],['Upper',['hpush','hpull','vpush','vpull']],['Lower',['hinge','squat','isoH','isoQ','calf']]],
+  6:[['Push A',['hpush','vpush','isoT','isoSD']],['Pull A',['vpull','hpull','isoRD','isoB']],['Legs A',['squat','hinge','isoQ','calf']],['Push B',['vpush','hpush','isoSD','isoT']],['Pull B',['hpull','vpull','isoB','core']],['Legs B',['hinge','lunge','isoH','calf']]],
+};
+// Slot code -> pattern + emphasis muscle for iso slots
+const SLOT = {
+  isoB:{p:'isolation',pri:'biceps'}, isoT:{p:'isolation',pri:'triceps'},
+  isoQ:{p:'isolation',pri:'quads'}, isoH:{p:'isolation',pri:'hamstrings'},
+  isoRD:{p:'isolation',pri:'rearDelts'}, isoSD:{p:'vpush',pri:'sideDelts'},
+};
+
+/* ---------------------------------------------------------------
+   2. STATE + persistence
+   --------------------------------------------------------------- */
+const DEFAULT_STATE = {
+  v:2,
+  profile:{name:'Athlete',goal:'hypertrophy',experience:'intermediate',days:4,sessionMin:60,
+    equipment:['barbell','dumbbell','machine','cable','bodyweight'],
+    restrictions:[], // e.g. ['shoulder']
+    gymBusyHours:[17,18,19]},
+  program:null,          // {createdWeek, weeks, split, cursor:{day}}
+  logs:[],               // completed sessions [{date, name, exercises:[{id,sets:[{w,r,rpe}]}], mission?}]
+  readiness:[],          // [{date, sleep, soreness, stress, energy, score, conf}]
+  autonomy:{director:'suggest',conductor:'suggest',substitution:'auto',recovery:'suggest',habit:'suggest',physique:'suggest',nutrition:'off'},
+  audit:[],              // agent activity feed
+  activeSession:null,    // session being run in conductor
+  weekIndex:0,           // which planned week we're on
+  lastMission:null,
+  // Physique Check: consent-gated, on-device only. Photos are NOT saved unless the user opts in; deletable anytime.
+  physique:{consent:false, ratings:null, savedPhotos:[], lastAnalysis:null, updatedISO:null},
+};
+// Deep-fill a (possibly partial / older / corrupt) state over defaults so nested sub-keys can't go missing,
+// and drop any exercise ids that no longer exist in the DB so downstream code can't crash. Throws on non-objects.
+function normalizeState(raw){
+  if(!raw || typeof raw!=='object' || Array.isArray(raw)) throw new Error('state is not an object');
+  const s=Object.assign(structuredClone(DEFAULT_STATE), raw);
+  s.profile=Object.assign(structuredClone(DEFAULT_STATE.profile), (raw.profile&&typeof raw.profile==='object')?raw.profile:{});
+  s.autonomy=Object.assign(structuredClone(DEFAULT_STATE.autonomy), (raw.autonomy&&typeof raw.autonomy==='object')?raw.autonomy:{});
+  s.physique=Object.assign(structuredClone(DEFAULT_STATE.physique), (raw.physique&&typeof raw.physique==='object')?raw.physique:{});
+  if(!Array.isArray(s.physique.savedPhotos)) s.physique.savedPhotos=[];
+  for(const k of ['logs','readiness','audit']) if(!Array.isArray(s[k])) s[k]=[];
+  if(!Array.isArray(s.profile.equipment)) s.profile.equipment=structuredClone(DEFAULT_STATE.profile.equipment);
+  if(!Array.isArray(s.profile.restrictions)) s.profile.restrictions=[];
+  const clean=e=>e&&EXBYID[e.id];
+  if(s.program && Array.isArray(s.program.week)) s.program.week.forEach(d=>{ if(Array.isArray(d.exercises)) d.exercises=d.exercises.filter(clean); });
+  if(s.lastMission && Array.isArray(s.lastMission.exercises)) s.lastMission.exercises=s.lastMission.exercises.filter(clean);
+  if(s.activeSession && Array.isArray(s.activeSession.exercises)) s.activeSession.exercises=s.activeSession.exercises.filter(clean);
+  return s;
+}
+let S = load();
+function load(){ try{ const r=localStorage.getItem('atlas.v2'); if(r) return normalizeState(JSON.parse(r)); }catch(e){} return structuredClone(DEFAULT_STATE); }
+function save(){ localStorage.setItem('atlas.v2', JSON.stringify(S)); }
+
+/* ---------------------------------------------------------------
+   3. UTIL
+   --------------------------------------------------------------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+const round=(x,n=1)=>Math.round(x/n)*n;
+const todayISO=()=> new Date().toISOString().slice(0,10);
+const fmtDate=iso=> new Date(iso+'T00:00').toLocaleDateString(undefined,{weekday:'short',day:'numeric',month:'short'});
+const daysBetween=(a,b)=> Math.round((new Date(b)-new Date(a))/86400000);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function toast(msg,ic='✓'){ const t=$('#toast'); t.innerHTML=`<b style="color:var(--accent)">${ic}</b> ${esc(msg)}`; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+
+/* ---------------------------------------------------------------
+   4. AGENT / POLICY / AUDIT LAYER
+   Every autonomous decision passes through here. The policy layer
+   decides auto vs suggest vs off; the audit trail records it with a
+   confidence band and the inputs used. This is the trust surface.
+   --------------------------------------------------------------- */
+const AGENTS = {
+  director:{name:'Programme Director',ic:'▤'},
+  conductor:{name:'Workout Conductor',ic:'✦'},
+  substitution:{name:'Gym Navigator',ic:'⇄'},
+  recovery:{name:'Recovery Governor',ic:'♥'},
+  habit:{name:'Habit-Rescue',ic:'⚑'},
+  physique:{name:'Physique Coach',ic:'📸'},
+  nutrition:{name:'Nutrition Executor',ic:'🍽'},
+};
+function confBand(c){ return c>=.8?'high':c>=.55?'moderate':'low'; }
+function logAgent(agent, msg, {conf=.7, inputs=[], mode=null, kind=null}={}){
+  const m = mode || S.autonomy[agent] || 'suggest';
+  const k = kind || (m==='off'?'block':m);
+  S.audit.unshift({t:Date.now(), agent, msg, conf, inputs, mode:m, kind:k});
+  S.audit=S.audit.slice(0,120);
+  save(); renderFeed();
+}
+// A gated action: agents may only *act* when policy allows; otherwise they surface a suggestion.
+function agentAct(agent, {act, suggestMsg, actMsg, conf, inputs}){
+  const mode = S.autonomy[agent];
+  if(mode==='off'){ logAgent(agent, `Held (agent off): ${suggestMsg}`, {conf,inputs,mode,kind:'block'}); return false; }
+  if(mode==='auto'){ act(); logAgent(agent, actMsg, {conf,inputs,mode,kind:'auto'}); return true; }
+  logAgent(agent, `Suggests: ${suggestMsg}`, {conf,inputs,mode,kind:'suggest'}); return false;
+}
+
+/* ---------------------------------------------------------------
+   5. TRAINING ENGINE
+   --------------------------------------------------------------- */
+// Available exercises given profile equipment + restrictions (+ optional extra restrictions e.g. an ephemeral mission injury)
+function availableEx(extraExcludeEquip=[], extraRestrict=[]){
+  const eq=new Set((S.profile.equipment||[]).filter(e=>!extraExcludeEquip.includes(e)));
+  const restr=new Set([...(S.profile.restrictions||[]), ...extraRestrict]);
+  return EX.filter(e=> eq.has(e.eq) && !e.contra.some(c=>restr.has(c)));
+}
+// Best exercise for a slot (pattern + optional emphasis), avoiding used ids
+function pickForSlot(slotCode, used, pool, opts={}){
+  const spec = SLOT[slotCode] ? SLOT[slotCode] : {p:slotCode,pri:null};
+  const maxDif = EXPERIENCE[S.profile.experience].maxDif;
+  let cands = pool.filter(e=> e.p===spec.p && e.dif<=maxDif && !used.has(e.id));
+  if(spec.pri) cands = cands.filter(e=> e.pri.includes(spec.pri) || e.sec.includes(spec.pri));
+  if(!cands.length){ // relax: any pattern match not used
+    cands = pool.filter(e=> e.p===spec.p && !used.has(e.id));
+  }
+  if(!cands.length) return null;
+  // crowded => de-prioritise popular / barbell-rack items
+  cands.sort((a,b)=>{
+    let sa=0,sb=0;
+    if(spec.pri){ sa+=a.pri.includes(spec.pri)?2:(a.sec.includes(spec.pri)?1:0); sb+=b.pri.includes(spec.pri)?2:(b.sec.includes(spec.pri)?1:0); }
+    sa+=a.comp?1:0; sb+=b.comp?1:0;
+    if(opts.crowded){ sa-=a.pop*2; sb-=b.pop*2; if(a.eq==='dumbbell'||a.eq==='machine')sa+=.6; if(b.eq==='dumbbell'||b.eq==='machine')sb+=.6; }
+    return sb-sa;
+  });
+  return cands[0];
+}
+// Prescribe sets/reps/load target for an exercise given goal + fatigue
+function prescribe(ex, {goal, fatigue=0, weekProg=0}={}){
+  const g=GOALS[goal]; const exp=EXPERIENCE[S.profile.experience];
+  let sets = (ex.comp? (goal==='strength'?4:3) : 3) + exp.setsAdj;
+  let repLo=g.reps[0], repHi=g.reps[1], rpe=g.rpe, rest=g.rest;
+  // fatigue governor: reduce volume/intensity, cap RPE, express uncertainty
+  if(fatigue>=2){ sets=Math.max(2,sets-1); rpe=Math.min(rpe,7); repLo=Math.max(repLo, g.reps[0]); }
+  else if(fatigue>=1){ rpe=Math.min(rpe,rpe-0.5|0? rpe-1:rpe); }
+  // progressive overload across weeks (double progression baseline)
+  const targetReps = clamp(repLo+weekProg, repLo, repHi);
+  const last = lastPerformance(ex.id);
+  let load = suggestLoad(ex, goal, last, fatigue);
+  return {sets:Math.max(2,sets), repLo, repHi, targetReps, rpe:clamp(rpe,6,9), rest, load, loadConf: last? .78 : .45};
+}
+// Estimated 1RM (Epley) from a set
+function e1rm(w,r){ return w>0? Math.round(w*(1+r/30)) : 0; }
+function lastPerformance(exId){
+  for(const s of S.logs){ const e=s.exercises.find(x=>x.id===exId && x.sets.some(st=>st.w)); if(e){ const top=e.sets.filter(st=>st.w).sort((a,b)=>e1rm(b.w,b.r)-e1rm(a.w,a.r))[0]; return {date:s.date, top, e1rm:e1rm(top.w,top.r)};} }
+  return null;
+}
+// Load suggestion: from history if available, else a light "learn it" starting point
+function suggestLoad(ex, goal, last, fatigue){
+  const g=GOALS[goal];
+  if(last){
+    const est1rm=last.e1rm;
+    const pct = goal==='strength'?0.82 : goal==='fatloss'?0.62 : 0.72;
+    let w = est1rm*pct;
+    if(fatigue>=2) w*=0.92; else if(fatigue>=1) w*=0.97;
+    return round(w, ex.eq==='dumbbell'?2.5:2.5);
+  }
+  return null; // unknown — conductor will ask / user fills in
+}
+// WEEKLY VOLUME the plan delivers per muscle (sets)
+function plannedVolume(week){
+  const vol=Object.fromEntries(MUSCLES.map(m=>[m,0]));
+  week.forEach(day=> day.exercises.forEach(e=>{ const ex=EXBYID[e.id]; if(!ex)return; ex.pri.forEach(m=>vol[m]+=e.sets); ex.sec.forEach(m=>vol[m]+=e.sets*0.5); }));
+  return vol;
+}
+// Volume actually trained in the last 7 days (from logs) — what is "owed"
+function recentVolume(days=7){
+  const vol=Object.fromEntries(MUSCLES.map(m=>[m,0]));
+  const cut=new Date(Date.now()-days*86400000).toISOString().slice(0,10);
+  S.logs.filter(l=>l.date>=cut).forEach(l=> l.exercises.forEach(e=>{ const ex=EXBYID[e.id]; if(!ex)return; const done=e.sets.filter(s=>s.r).length||e.sets.length; ex.pri.forEach(m=>vol[m]+=done); ex.sec.forEach(m=>vol[m]+=done*0.5); }));
+  return vol;
+}
+// Apply week-to-week progression to a stored program day at consumption time:
+// double-progression climbs the rep target toward the top of the range; a scheduled deload cuts volume & intensity.
+function applyWeek(exs){
+  if(!S.program) return exs;
+  const wi=S.weekIndex, deload=(wi+1)%S.program.deloadEvery===0;
+  const cycles=deload?0:wi;                      // deload resets the rep climb
+  return exs.map(e=>{
+    const range=Math.max(0,(e.repHi||e.repLo)-e.repLo);
+    const targetReps=clamp(e.repLo+(range?(cycles%(range+1)):0), e.repLo, e.repHi);
+    return {...e,
+      sets: deload? Math.max(2,Math.round(e.sets*0.6)) : e.sets,
+      rpe:  deload? clamp(e.rpe-1,6,9) : e.rpe,
+      deload, targetReps };
+  });
+}
+// Progression pause: on a red-flag recovery day (or a run of low-confidence decisions) Atlas holds load rather than pushing.
+function isProgressionPaused(){
+  const r=S.readiness[0];
+  const painFlag = r && r.date===todayISO() && r.score<32;
+  const lowConf = S.audit.filter(a=>a.conf<.55).length>=4;
+  return !!(painFlag || lowConf);
+}
+
+/* ----- PROGRAMME GENERATION (Autonomous Programme Director) ----- */
+function generateProgram(){
+  const {goal,days}=S.profile;
+  const template = SPLITS[clamp(days,2,6)];
+  const pool = availableEx();
+  const week = template.map(([name,slots])=>{
+    const used=new Set(); const exercises=[];
+    slots.forEach(sc=>{ const ex=pickForSlot(sc, used, pool); if(ex){ used.add(ex.id); const pr=prescribe(ex,{goal}); exercises.push({id:ex.id, sets:pr.sets, repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest}); } });
+    return {name, exercises, done:false};
+  });
+  S.program = {createdISO:todayISO(), split:`${days}-day`, week, deloadEvery:5};
+  S.weekIndex=0;
+  save();
+  logAgent('director', `Built a ${days}-day ${GOALS[goal].label.toLowerCase()} programme (${week.reduce((a,d)=>a+d.exercises.length,0)} exercises). Deload scheduled every 5 weeks.`, {conf:.82, inputs:['goal','days','equipment','experience'], mode:'auto', kind:'auto'});
+  return S.program;
+}
+
+/* ----- MISSION MODE — the flagship differentiator -----
+   Free-text situation -> a single, constraint-honoring session. */
+const AREA_WORDS = {shoulder:['shoulder','delt','rotator'],knee:['knee','patella'],lowerback:['lower back','low back','back','lumbar','spine'],elbow:['elbow'],wrist:['wrist'],hip:['hip']};
+const FOCUS_WORDS = {push:['push','chest','press','bench'],pull:['pull','back','row','lat'],legs:['leg','squat','lower body','quad','glute','hamstring'],upper:['upper body','upper'],arms:['arm','bicep','tricep','curl'],core:['core','ab','abs']};
+// Word-boundary match (plural-aware) so short tokens like "row" don't match inside "crowded".
+function hasWord(t,w){ return new RegExp('\\b'+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'s?\\b').test(t); }
+function parseMission(text){
+  const t=' '+text.toLowerCase()+' ';
+  const r={raw:text, minutes:null, crowded:false, fatigue:0, restrict:new Set(), focus:null, wantEasy:false, wantHard:false};
+  // time
+  let m=t.match(/(\d{1,3})\s*(?:min|minute|mins|m\b|')/); if(m)r.minutes=+m[1];
+  if(/half\s*(an\s*)?hour/.test(t))r.minutes=30;
+  if(/an?\s*hour|60\s*min/.test(t))r.minutes=r.minutes||60;
+  if(/quick|short/.test(t))r.minutes=r.minutes||25;
+  // crowded
+  if(/crowd|busy|packed|full|queue|waiting|everyone|no free|rammed/.test(t))r.crowded=true;
+  // fatigue signals
+  if(/no sleep|barely slept|terrible sleep|slept (badly|poorly|awful)|exhausted|wrecked|so tired|drained|awful night|bad night/.test(t))r.fatigue=2;
+  else if(/tired|poor sleep|didn'?t sleep well|low energy|groggy|stressed|rough/.test(t))r.fatigue=1;
+  if(/fresh|well rested|great sleep|energised|energized|feeling good|strong/.test(t))r.fatigue=0;
+  // restrictions / pain
+  for(const [area,words] of Object.entries(AREA_WORDS)){
+    if(words.some(w=>hasWord(t,w)) && /(hurt|sore|pain|aggravat|niggle|tweak|injur|avoid|protect|bad|dodgy|careful|don'?t want)/.test(t))
+      r.restrict.add(area);
+  }
+  // focus
+  for(const [f,words] of Object.entries(FOCUS_WORDS)){ if(words.some(w=>hasWord(t,w))){ r.focus=f; break; } }
+  if(/easy|light|deload|gentle|mobility|recovery/.test(t))r.wantEasy=true;
+  if(/hard|heavy|pr|max|smash|go hard/.test(t))r.wantHard=true;
+  return r;
+}
+function focusSlots(focus){
+  switch(focus){
+    case 'push':return ['hpush','vpush','isoT','isoSD'];
+    case 'pull':return ['vpull','hpull','isoRD','isoB'];
+    case 'legs':return ['squat','hinge','lunge','isoQ','calf'];
+    case 'upper':return ['hpush','hpull','vpush','vpull','isoB'];
+    case 'arms':return ['isoB','isoT','isoB','isoT'];
+    case 'core':return ['core','core','isoQ','hinge'];
+    default:return null;
+  }
+}
+function generateMission(text){
+  const p=parseMission(text);
+  const goal=S.profile.goal;
+  // 1. restrictions = profile restrictions ∪ mission-stated pain
+  const restr=new Set([...S.profile.restrictions, ...p.restrict]);
+  const savedRestr=S.profile.restrictions; S.profile.restrictions=[...restr];
+  const pool = availableEx();
+  S.profile.restrictions=savedRestr; // restore (mission is ephemeral)
+
+  // 2. time budget -> exercise & set count
+  const minutes = p.minutes || S.profile.sessionMin || 45;
+  const effFatigue = p.wantEasy? Math.max(p.fatigue,2) : p.fatigue;
+  const setsPerEx = effFatigue>=2?2: (minutes<30?2:3);
+  const perExMin = (setsPerEx * ((GOALS[goal].rest/60)+0.9)) + 2; // rough
+  let nEx = clamp(Math.floor(minutes/perExMin), 2, 7);
+
+  // 3. choose the movements: explicit focus, else what's most "owed" this week
+  let slots;
+  if(p.focus){ slots=focusSlots(p.focus).slice(0,nEx); }
+  else {
+    const rec=recentVolume(7);
+    // rank patterns by how little their muscles have been hit
+    const owed = Object.entries(rec).sort((a,b)=>a[1]-b[1]).slice(0,6).map(x=>x[0]);
+    const wanted=[];
+    if(owed.some(m=>['quads','glutes','hamstrings'].includes(m))) wanted.push(effFatigue>=2?'lunge':'squat','hinge');
+    wanted.push('hpush','hpull','vpush','vpull','core');
+    slots=[...new Set(wanted)].slice(0,nEx);
+  }
+  // 4. build session honoring crowded + restrictions
+  const used=new Set(); const exercises=[];
+  slots.forEach(sc=>{ const ex=pickForSlot(sc, used, pool, {crowded:p.crowded}); if(ex){ used.add(ex.id); const pr=prescribe(ex,{goal,fatigue:effFatigue}); exercises.push({id:ex.id, sets:setsPerEx||pr.sets, repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest, load:pr.load}); } });
+
+  // 5. confidence: more info + more history -> higher
+  let conf=.5;
+  if(p.minutes)conf+=.12; if(p.focus)conf+=.08; if(restr.size)conf+=.06;
+  if(S.logs.length>=3)conf+=.12; conf=clamp(conf,.35,.9);
+
+  // 6. what got deferred (reconcile with programme)
+  const deferred=[];
+  if(p.focus) deferred.push(`focused on ${p.focus}; the rest of your week's split is unchanged`);
+  if(minutes<40) deferred.push('shortened session — 1–2 accessory movements deferred to your next slot');
+  if(effFatigue>=2) deferred.push('intensity capped; a heavy day was pushed later in the week');
+
+  const session={
+    name:`Mission · ${new Date().toLocaleDateString(undefined,{weekday:'short'})}`,
+    createdISO:todayISO(), mission:p, minutes, exercises, confidence:conf, deferred,
+    rationale: missionRationale(p, minutes, effFatigue, restr, nEx)
+  };
+  S.lastMission=session; save();
+  logAgent('director', `Mission session generated: ${exercises.length} exercises for ${minutes} min${restr.size?`, protecting ${[...restr].join('/')}`:''}${p.crowded?', crowd-aware substitutions on':''}. Confidence ${confBand(conf)}.`, {conf, inputs:['mission text','recent volume','equipment', restr.size?'stated restriction':''].filter(Boolean), mode:'auto', kind:'auto'});
+  return session;
+}
+function missionRationale(p, minutes, fatigue, restr, nEx){
+  const bits=[];
+  bits.push(`Fit <b>${nEx} movements</b> into your <b>${minutes} min</b> window.`);
+  if(fatigue>=2)bits.push(`You flagged poor recovery, so I <b>capped RPE at 7</b>, cut a set per exercise and biased toward machines/unilateral work. This is a judgement call — if you feel better than expected, add a set.`);
+  else if(fatigue>=1)bits.push(`Slightly reduced intensity given the fatigue signal.`);
+  if(restr.size)bits.push(`Excluded every movement that loads the <b>${[...restr].join(', ')}</b>.`);
+  if(p.crowded)bits.push(`Gym's busy, so I avoided the most-contested stations (squat rack / benches) and picked equivalents that keep the same muscle stimulus. The Navigator can swap live if a machine's taken.`);
+  if(!p.focus)bits.push(`No focus given, so I targeted the muscles your last 7 days under-trained.`);
+  return bits.join(' ');
+}
+
+/* ----- Queue-aware substitution (Gym Navigator) ----- */
+function substitutes(exId, {crowded=true, restrict=[], exclude=new Set()}={}){
+  const ex=EXBYID[exId]; if(!ex)return [];
+  const pool=availableEx([], restrict);   // honor any extra (e.g. mission-stated) restrictions
+  return pool.filter(c=> c.id!==exId && !exclude.has(c.id) && c.p===ex.p && (c.pri.some(m=>ex.pri.includes(m))))
+    .map(c=>({ex:c, overlap:c.pri.filter(m=>ex.pri.includes(m)).length, contention:c.pop}))
+    .sort((a,b)=> (b.overlap-a.overlap) || (crowded? a.contention-b.contention : b.ex.comp-a.ex.comp))
+    .slice(0,4).map(x=>x.ex);
+}
+
+/* ----- Physique Coach (on-device weak-point analysis) -----
+   HONEST DESIGN: a single photo cannot reliably diagnose muscle weakness. So the "scan" FUSES a
+   photo-guided self-assessment (seeded from your training history) with objective signals — logged
+   weekly volume per muscle and stalled lifts — and reports weak points WITH a confidence band, not a
+   verdict. The photo is shown only for you to rate against; it is never uploaded, face-recognised, or
+   used for training, and is not saved unless you explicitly opt in. //CV: an on-device pose model
+   (e.g. MediaPipe) could later add objective symmetry/proportion measurement without changing this contract. */
+const PHYS_GROUPS = [
+  {key:'chest',label:'Chest'},{key:'lats',label:'Back / lats'},{key:'upperBack',label:'Upper back / traps'},
+  {key:'rearDelts',label:'Rear delts'},{key:'sideDelts',label:'Side delts (width)'},
+  {key:'biceps',label:'Biceps'},{key:'triceps',label:'Triceps'},{key:'quads',label:'Quads'},
+  {key:'hamstrings',label:'Hamstrings'},{key:'glutes',label:'Glutes'},{key:'calves',label:'Calves'},{key:'core',label:'Core / abs'},
+];
+const PHYS_VOL_TARGET = 12; // ~weekly sets considered "well trained" for a muscle
+function exercisesForMuscle(m){
+  return availableEx().filter(e=> e.pri.includes(m))
+    .sort((a,b)=> (a.comp-b.comp) || (a.dif-b.dif) || (b.pop-a.pop)); // isolation-ish & accessible first for a bring-up
+}
+function seedRatingsFromVolume(){
+  const vol=recentVolume(28); const out={};
+  const max=Math.max(PHYS_VOL_TARGET, ...PHYS_GROUPS.map(g=>vol[g.key]||0));
+  PHYS_GROUPS.forEach(g=>{ const v=vol[g.key]||0; out[g.key]= S.logs.length? clamp(Math.round(1+(v/max)*4),1,5) : 3; });
+  return out;
+}
+function analyzePhysique(ratings){
+  const vol=recentVolume(7);
+  const stalled=new Set(topLifts().filter(l=>l.series.length>=3 && l.series.at(-1).v<=l.series[0].v).flatMap(l=>EXBYID[l.id].pri));
+  const rows=PHYS_GROUPS.map(g=>{
+    const rating=clamp(ratings?.[g.key]||3,1,5);
+    const v=vol[g.key]||0;
+    const visual=(5-rating)/4;                         // 0 (great) .. 1 (weak) from self-assessment
+    const volDeficit=1-clamp(v/PHYS_VOL_TARGET,0,1);    // 0 (enough sets) .. 1 (none)
+    const lag=stalled.has(g.key)?1:0;
+    const score= visual*0.5 + volDeficit*0.35 + lag*0.15;
+    const reasons=[];
+    if(rating<=2) reasons.push('you rated it under-developed'); else if(rating===3) reasons.push('you rated it average');
+    if(v<6) reasons.push(`only ${Math.round(v)} set${Math.round(v)===1?'':'s'} trained in the last 7 days`);
+    if(lag) reasons.push('a lift that trains it has stalled');
+    return {key:g.key, label:g.label, rating, vol:v, score, reasons};
+  }).sort((a,b)=>b.score-a.score);
+  const weakPoints=(rows.filter(r=>r.score>=0.4).slice(0,4)) ; const pool=weakPoints.length?weakPoints:rows.slice(0,2);
+  // Confidence is deliberately modest — a photo + self-report are noisy. More logged history nudges it up.
+  const conf=clamp(0.42 + (S.logs.length>=6?0.14:S.logs.length>=3?0.08:0), 0.35, 0.68);
+  return {weakPoints:pool, all:rows, conf, ts:todayISO()};
+}
+function buildSpecialization(weakPoints){
+  return weakPoints.map(w=>{
+    const exs=exercisesForMuscle(w.key).slice(0,2).map(e=>{ const pr=prescribe(e,{goal:'hypertrophy'}); return {id:e.id, sets:Math.min(4,pr.sets+1), repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest}; });
+    return {key:w.key, label:w.label, exercises:exs, addSets:exs.reduce((a,e)=>a+e.sets,0)};
+  }).filter(s=>s.exercises.length);
+}
+function applySpecialization(spec){
+  if(!S.program) return {added:0, note:'no programme'};
+  let added=0; const cap=8;
+  spec.forEach(s=> s.exercises.forEach(ex=>{
+    if(!EXBYID[ex.id]) return;
+    if(S.program.week.some(d=>d.exercises.some(e=>e.id===ex.id))) return; // already in the week
+    const pat=EXBYID[ex.id].p;
+    const day=S.program.week.filter(d=>d.exercises.length<cap)
+      .sort((a,b)=> (b.exercises.some(e=>EXBYID[e.id]?.p===pat)?1:0)-(a.exercises.some(e=>EXBYID[e.id]?.p===pat)?1:0) || a.exercises.length-b.exercises.length)[0];
+    if(!day) return;
+    day.exercises.push({id:ex.id, sets:ex.sets, repLo:ex.repLo, repHi:ex.repHi, rpe:ex.rpe, rest:ex.rest}); added++;
+  }));
+  save();
+  return {added, muscles:spec.map(s=>s.label)};
+}
+
+/* ----- Recovery Governor ----- */
+function computeReadiness({sleep,soreness,stress,energy}){
+  // inputs 1..5; higher sleep/energy good, higher soreness/stress bad
+  const raw = (sleep*0.32 + energy*0.28 + (6-soreness)*0.22 + (6-stress)*0.18); // ~1..5
+  const score = clamp(Math.round((raw-1)/4*100),0,100);
+  // confidence: self-report only, no wearable -> deliberately moderate
+  const spread = Math.abs(sleep-energy)+Math.abs(soreness-stress);
+  const conf = clamp(0.72 - spread*0.04, 0.45, 0.8);
+  let rec, adjust;
+  if(score>=72){ rec='Proceed as planned.'; adjust={sets:0,rpe:0}; }
+  else if(score>=50){ rec='Slightly reduce — hold RPE ~1 lower, keep volume.'; adjust={sets:0,rpe:-1}; }
+  else if(score>=32){ rec='Reduce & redistribute — drop a set on the big lifts, cap RPE at 7.'; adjust={sets:-1,rpe:-1}; }
+  else { rec='Deload or convert to mobility + easy cardio today.'; adjust={sets:-2,rpe:-2}; }
+  return {score, conf, rec, adjust};
+}
+
+/* ----- Digital Twin — simple, honest simulations ----- */
+function simulate(scenario){
+  const goal=S.profile.goal; const days=S.profile.days;
+  const wk=S.program? plannedVolume(S.program.week):null;
+  const totalSets = wk? Math.round(Object.values(wk).reduce((a,b)=>a+b,0)) : days*18;
+  const out={};
+  if(scenario==='days'){
+    const base=days;
+    out.title='Training-day sensitivity';
+    out.rows=[3,4,5].map(d=>{
+      const vol=Math.round(totalSets/base*d);
+      const stim=clamp(0.4+d*0.11,0,1);
+      const recov=clamp(1.05-d*0.09,0,1);
+      const proj=Math.round((stim*0.6+recov*0.4)*100);
+      return {label:`${d} days/week`, vol, proj, note:d>=5?'high stimulus, recovery becomes the limiter':d<=3?'very sustainable, slower peak':'balanced'};
+    });
+    out.caveat='Projections are directional, not clinical. Individual recovery varies — the twin refines these as it sees your actual logs.';
+  } else if(scenario==='holiday'){
+    out.title='2-week break (detraining)';
+    const e=topLifts()[0];
+    out.rows=[{label:'Strength',proj:-6,note:'~5–8% temporary e1RM dip, recovered in ~1–2 weeks back'},{label:'Muscle',proj:-2,note:'minimal actual loss in 2 weeks'},{label:'Conditioning',proj:-12,note:'fastest to fade, fastest to rebuild'}];
+    out.caveat='Short breaks cost far less than most fear. A 2–3 session "re-entry" week restores most of it. Estimates, not guarantees.';
+  } else if(scenario==='deficit'){
+    out.title='Maintenance → calorie deficit';
+    out.rows=[{label:'Recovery capacity',proj:-15,note:'lower — expect reduced work tolerance'},{label:'Strength retention',proj:-4,note:'largely preserved if you keep intensity'},{label:'Recommended change',proj:0,note:'cut volume ~20%, keep the heavy sets'}];
+    out.caveat='The governor will lean toward "reduce & redistribute" more often in a deficit. Watch readiness closely.';
+  } else if(scenario==='strength'){
+    out.title='Prioritise strength over size';
+    out.rows=[{label:'Rep range',proj:0,note:'shift to 3–6 reps on main lifts'},{label:'Rest',proj:0,note:'longer rest (3 min) — sessions run longer'},{label:'Volume',proj:-10,note:'lower total sets, higher intensity'}];
+    out.caveat='I can re-generate your programme with a strength bias from Settings → goal.';
+  }
+  return out;
+}
+
+/* ----- Progress / performance model helpers ----- */
+function topLifts(){
+  const ids=['bb_backsquat','bench','deadlift','ohp','db_bench','latpull','bb_row'];
+  const seen=new Set();
+  const rows=[];
+  S.logs.forEach(l=> l.exercises.forEach(e=>{ if(seen.has(e.id))return; if(EXBYID[e.id]?.comp && e.sets.some(s=>s.w)){ seen.add(e.id); rows.push({id:e.id, series:lifeSeries(e.id)}); } }));
+  return rows.length?rows:ids.filter(i=>EXBYID[i]).map(i=>({id:i,series:lifeSeries(i)}));
+}
+function lifeSeries(exId){
+  const pts=[];
+  [...S.logs].reverse().forEach(l=>{ const e=l.exercises.find(x=>x.id===exId); if(e){ const best=Math.max(0,...e.sets.filter(s=>s.w).map(s=>e1rm(s.w,s.r))); if(best)pts.push({date:l.date,v:best}); } });
+  return pts;
+}
+function adherence(weeks=4){
+  const per=S.profile.days;
+  const cut=new Date(Date.now()-weeks*7*86400000).toISOString().slice(0,10);
+  const done=S.logs.filter(l=>l.date>=cut).length;
+  const target=per*weeks;
+  return {done, target, pct: target? clamp(Math.round(done/target*100),0,100):0};
+}
+
+/* ---------------------------------------------------------------
+   6. HABIT-RESCUE (just-in-time)
+   Predicts an at-risk session and offers a proportional intervention.
+   --------------------------------------------------------------- */
+function habitCheck(){
+  const hour=new Date().getHours();
+  const todayLogged = S.logs.some(l=>l.date===todayISO());
+  const adh=adherence(2);
+  const behind = adh.done < adh.target*0.6;
+  // "at risk": it's evening, nothing logged today, and this is a planned day
+  const risk = !todayLogged && hour>=18 && S.program;
+  if(risk){
+    return {risk:true, behind, msg:`It's getting late and today's session isn't logged. Rather than skip, here's a rescue.`,
+      options:['20-min express version','Move it to tomorrow (auto-replan week)','Convert to mobility + 15-min walk']};
+  }
+  return {risk:false, behind};
+}
+
+/* ================================================================
+   7. VIEWS / RENDER
+   ================================================================ */
+const VIEWS={
+  dash:{title:'Dashboard',sub:'Your autonomous training companion'},
+  mission:{title:'Mission Mode',sub:'State your situation — I build the session'},
+  program:{title:'Programme',sub:'Autonomously planned & continuously reconciled'},
+  progress:{title:'Progress',sub:'What the performance model has learned'},
+  physique:{title:'Physique Check',sub:'On-device weak-point analysis — private, honest about uncertainty'},
+  recovery:{title:'Recovery',sub:'Fatigue governor — expresses uncertainty, not verdicts'},
+  twin:{title:'Digital Twin',sub:'Simulate scenarios before you commit'},
+  coaches:{title:'Human Escalation',sub:'Hand off to a professional with full context'},
+  agents:{title:'Agents & Policy',sub:'What may act automatically — and what asks first'},
+  settings:{title:'Settings',sub:'Profile, equipment, restrictions'},
+};
+let current='dash';
+const TAB_MORE_VIEWS=['progress','physique','twin','coaches','agents','settings']; // live in the mobile "More" sheet
+function nav(v){
+  current=v; $$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));
+  $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view===v || (b.dataset.view==='more'&&TAB_MORE_VIEWS.includes(v))));
+  $('#viewTitle').textContent=VIEWS[v].title; $('#viewSub').textContent=VIEWS[v].sub;
+  $('#content').innerHTML = RENDER[v]();
+  bindView(v);
+  $('#side').classList.remove('open'); closeMore();
+  window.scrollTo(0,0);
+}
+function openMore(){ $('#moresheet').classList.add('open'); $('#moreBackdrop').classList.add('open'); $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view==='more')); }
+function closeMore(){ $('#moresheet').classList.remove('open'); $('#moreBackdrop').classList.remove('open'); }
+
+const RENDER={
+/* ---------- DASHBOARD ---------- */
+dash(){
+  const adh=adherence(4);
+  const read=S.readiness[0];
+  const hb=habitCheck();
+  const todayDay = S.program? S.program.week[S.weekIndex % S.program.week.length] : null;
+  const today = todayDay ? {name:todayDay.name, exercises:applyWeek(todayDay.exercises)} : null; // week-adjusted (deload/progression) view
+  const vol = S.program? plannedVolume(S.program.week):null;
+  return `
+  ${!S.program?`<div class="card" style="border-color:var(--accent)">
+    <div class="between"><div><h3>Welcome to Atlas</h3><div class="desc">No programme yet. The Programme Director can build one from your goal, or jump straight into Mission Mode.</div></div></div>
+    <div class="row"><button class="btn primary" onclick="doGenerate()">▤ Build my programme</button><button class="btn" onclick="nav('mission')">✦ Try Mission Mode</button><button class="btn ghost" onclick="loadDemo()">Load demo data</button></div>
+  </div>`:''}
+
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="card"><div class="muted" style="font-size:12px">Readiness</div><div class="kpi" style="color:${read?readColor(read.score):'var(--ink3)'}">${read?read.score:'—'}${read?'<span style="font-size:14px">%</span>':''}</div><div class="muted" style="font-size:11px">${read?`confidence: ${confBand(read.conf)} · self-report`:'no check-in yet'}</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">4-wk adherence</div><div class="kpi">${adh.pct}<span style="font-size:14px">%</span></div><div class="muted" style="font-size:11px">${adh.done}/${adh.target} sessions</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">Logged sessions</div><div class="kpi">${S.logs.length}</div><div class="muted" style="font-size:11px">total history</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">Est. weekly sets</div><div class="kpi">${vol?Math.round(Object.values(vol).reduce((a,b)=>a+b,0)):'—'}</div><div class="muted" style="font-size:11px">across all muscles</div></div>
+  </div>
+
+  ${S.activeSession?`<div class="card" style="border-color:var(--accent2);margin-bottom:16px">
+    <div class="between"><div class="row"><span class="mode-badge mode-auto">Conductor</span><b>Session in progress — ${esc(S.activeSession.name)}</b></div>
+    <div class="row"><button class="btn primary sm" onclick="resumeSession()">▶ Resume</button><button class="btn ghost sm" onclick="discardActive()">Discard</button></div></div>
+  </div>`:''}
+
+  ${hb.risk?`<div class="card" style="border-color:var(--warn);margin-bottom:16px">
+    <div class="row" style="margin-bottom:8px"><span class="mode-badge mode-suggest">Habit-Rescue</span><b>Session at risk</b></div>
+    <div class="desc" style="margin-bottom:12px">${esc(hb.msg)} <span class="muted">Instead of a nagging reminder, pick a proportional option:</span></div>
+    <div class="row">${hb.options.map((o,i)=>`<button class="btn ${i===0?'primary':''}" onclick="rescue(${i})">${esc(o)}</button>`).join('')}</div>
+  </div>`:''}
+
+  <div class="grid g2">
+    <div class="card">
+      <div class="between"><h3>Today · ${today?esc(today.name):'Rest / open'}</h3>${today?`<button class="btn primary sm" onclick="startSession('program')">▶ Start</button>`:''}</div>
+      <div class="desc">Week ${S.weekIndex+1}${S.program&&(S.weekIndex+1)%S.program.deloadEvery===0?' · <span class="tag warn">deload</span>':''}</div>
+      ${today? today.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)}</span><span class="m">${e.sets}×${e.repLo}-${e.repHi} · RPE ${e.rpe}</span></div>`:''}).join('') : `<div class="empty"><div class="big">◎</div>Nothing scheduled. <a href="#" onclick="nav('mission');return false" style="color:var(--accent)">Run a Mission session?</a></div>`}
+    </div>
+
+    <div class="card">
+      <h3>Weekly balance <span class="muted" style="font-weight:400;font-size:12px">— planned volume vs recent</span></h3>
+      <div class="desc">The Director keeps movement patterns balanced. Bars show planned weekly sets per muscle.</div>
+      ${vol? volumeChart(vol):'<div class="muted">Build a programme to see balance.</div>'}
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="between"><h3>Recent agent decisions</h3><button class="btn ghost sm" onclick="toggleDrawer()">Open full feed →</button></div>
+    <div class="desc">Every autonomous action is logged with its confidence and the inputs it used.</div>
+    ${S.audit.slice(0,4).map(feedRow).join('')||'<div class="muted">No activity yet.</div>'}
+  </div>`;
+},
+
+/* ---------- MISSION MODE ---------- */
+mission(){
+  const m=S.lastMission;
+  const examples=['I have 38 minutes, the gym is crowded, I slept badly and I don\'t want to aggravate my shoulder','45 min, feeling fresh, want to focus on pull','Quick 25 minute legs session, knee is a bit sore','An hour, busy gym, push day please'];
+  return `
+  <div class="card">
+    <h3>✦ Mission Mode</h3>
+    <div class="desc">Don't pick a workout — describe your situation. The engine reads your programme, restrictions, recent training and equipment, then builds one session that fits. This is the difference between an app that <i>shows</i> a workout and one that <i>runs</i> your training.</div>
+    <textarea id="missionInput" placeholder="e.g. I have 38 minutes, the gym is crowded, I slept badly and I don't want to aggravate my shoulder">${m?esc(m.mission.raw):''}</textarea>
+    <div class="row" style="margin:10px 0"><button class="btn primary" onclick="runMission()">Build my session →</button><button class="btn ghost" onclick="micMission()" id="micBtn" title="Voice input">🎙 Speak</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Try:</div>
+    <div class="row">${examples.map(e=>`<span class="chip" onclick="document.getElementById('missionInput').value=this.textContent">${esc(e)}</span>`).join('')}</div>
+    <div class="help">//LLM: intent parsing here is deterministic & offline. A language model would widen the phrasings understood; the engine below stays authoritative on what's safe.</div>
+  </div>
+  <div id="missionOut">${m?missionResult(m):''}</div>`;
+},
+
+/* ---------- PROGRAMME ---------- */
+program(){
+  if(!S.program) return `<div class="card"><div class="empty"><div class="big">▤</div>No programme yet.<br><br><button class="btn primary" onclick="doGenerate()">Build my programme</button></div></div>`;
+  const p=S.program;
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <div class="between">
+      <div><h3>${esc(p.split)} split · ${GOALS[S.profile.goal].label}</h3><div class="desc">Created ${fmtDate(p.createdISO)} · Week ${S.weekIndex+1} · deload every ${p.deloadEvery} weeks</div></div>
+      <div class="row"><button class="btn sm" onclick="doGenerate()">↻ Regenerate</button><button class="btn sm" onclick="advanceWeek()">Next week →</button></div>
+    </div>
+    <div class="rationale"><b>Reconciliation:</b> the Director advances load week to week, inserts easier weeks, and if you miss a day it reallocates the most important exercises rather than dropping them. Progression uses double-progression (add reps to the top of the range, then load).</div>
+  </div>
+  <div class="split">
+    ${p.week.map((d,i)=>`
+      <div class="daycol ${i===(S.weekIndex%p.week.length)?'today':''}">
+        <div class="dt"><span>${esc(d.name)}${i===(S.weekIndex%p.week.length)?' · today':''}</span><button class="btn ghost sm" onclick="startSession('program',${i})">▶</button></div>
+        ${d.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span></span><span class="m">${e.sets}×${e.repLo}-${e.repHi}</span></div>`:''}).join('')}
+      </div>`).join('')}
+  </div>`;
+},
+
+/* ---------- PROGRESS ---------- */
+progress(){
+  const lifts=topLifts().filter(l=>l.series.length);
+  const adh=adherence(6);
+  const rec=recentVolume(7);
+  return `
+  <div class="grid g3" style="margin-bottom:16px">
+    <div class="card"><div class="muted" style="font-size:12px">6-wk adherence</div><div class="kpi">${adh.pct}%</div><div class="bar" style="margin-top:8px"><i style="width:${adh.pct}%"></i></div></div>
+    <div class="card"><div class="muted" style="font-size:12px">Tracked lifts</div><div class="kpi">${lifts.length}</div><div class="muted" style="font-size:11px">with e1RM history</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">This week's volume</div><div class="kpi">${Math.round(Object.values(rec).reduce((a,b)=>a+b,0))}</div><div class="muted" style="font-size:11px">working sets logged</div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px">
+    <h3>Estimated 1RM trend <span class="muted" style="font-weight:400;font-size:12px">— the model's read on your strength</span></h3>
+    <div class="desc">Epley estimate from your logged top sets. The performance model uses these to set loads and detect stalls.</div>
+    ${lifts.length? lifts.map(l=>`
+      <div style="margin:14px 0">
+        <div class="between" style="margin-bottom:4px"><b>${esc(EXBYID[l.id].n)}</b><span class="mono muted" style="font-family:var(--mono)">${l.series.at(-1).v} kg <span class="tag ${trendTag(l.series)}">${trendLabel(l.series)}</span></span></div>
+        ${sparkline(l.series.map(p=>p.v))}
+      </div>`).join('') : `<div class="empty"><div class="big">📈</div>Log a few sessions and your strength trends appear here.<br><button class="btn sm" onclick="loadDemo()" style="margin-top:10px">Load demo data</button></div>`}
+  </div>
+  <div class="card">
+    <h3>Weekly volume by muscle <span class="muted" style="font-weight:400;font-size:12px">— last 7 days logged</span></h3>
+    <div class="desc">Under-trained muscles here are exactly what Mission Mode targets when you don't specify a focus.</div>
+    ${volumeChart(rec)}
+  </div>`;
+},
+
+/* ---------- PHYSIQUE CHECK ---------- */
+physique(){
+  hydratePhotos();
+  const P=S.physique;
+  const ratings = P.ratings || seedRatingsFromVolume();
+  const a = P.lastAnalysis;
+  const photos = PHY.photos;
+  const keepOn = P.savedPhotos.length>0;
+  if(!P.consent){
+    return `<div class="card" style="border-color:var(--accent)">
+      <h3>📸 Physique Check — how it works &amp; your privacy</h3>
+      <div class="desc" style="margin-bottom:12px">A single photo can't truly diagnose weak muscles, so Atlas doesn't pretend to. Instead it fuses a quick <b>photo-guided self-assessment</b> with your <b>logged training volume</b> and <b>stalled lifts</b> to flag likely weak points — always with a confidence band, never a verdict — then builds a plan to bring them up.</div>
+      <div class="rationale" style="margin-bottom:14px"><b>Your privacy, built in:</b>
+        <ul style="margin:8px 0 0;padding-left:18px;line-height:1.75">
+          <li>Your photo is processed <b>entirely on this device</b> and is <b>never uploaded</b> anywhere.</li>
+          <li><b>No face recognition</b>, ever. It is <b>never used to train any model</b>.</li>
+          <li>Photos are <b>not saved</b> unless you tick “keep on this device”, and you can <b>delete everything</b> in one tap.</li>
+          <li>This is fitness guidance, <b>not a medical or body-composition diagnosis</b>.</li>
+        </ul>
+      </div>
+      <button class="btn primary" onclick="giveConsent()">I understand — continue</button>
+    </div>`;
+  }
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <div class="between"><h3>📸 On-device physique scan</h3><span class="tag good">private · on-device</span></div>
+    <div class="desc">Add a photo to rate against (optional but it helps), assess each muscle group, then Atlas ranks your weak points and builds a plan. Nothing leaves this device.</div>
+    <div class="row" style="margin:6px 0 12px">
+      <button class="btn" onclick="document.getElementById('phys_file').click()">＋ Add photo</button>
+      <label class="chip ${keepOn?'on':''}" style="user-select:none"><input type="checkbox" id="phys_keep" ${keepOn?'checked':''} onchange="toggleSavePhotos(this)" style="width:auto;margin-right:6px;vertical-align:-2px"> Keep on this device</label>
+      ${(photos.length||a)?`<button class="btn ghost sm danger" onclick="deletePhysiqueData()">🗑 Delete photos &amp; data</button>`:''}
+      <input type="file" id="phys_file" accept="image/*" class="hidden" onchange="handlePhoto(event)">
+    </div>
+    ${photos.length?`<div class="row" style="gap:10px">${photos.map((p,i)=>`<div style="position:relative"><img src="${p.url}" alt="physique reference" style="width:96px;height:128px;object-fit:cover;border-radius:10px;border:1px solid var(--line2)"><span class="tag" style="position:absolute;left:4px;bottom:4px;padding:1px 6px">${esc(p.label)}</span><button class="btn ghost sm" onclick="removePhoto(${i})" style="position:absolute;top:2px;right:2px;padding:2px 7px;background:rgba(0,0,0,.55)">✕</button></div>`).join('')}</div>`:`<div class="help">No photo added — you can still assess from the mirror. On a phone, “Add photo” opens your camera.</div>`}
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <h3>Rate each muscle group <span class="muted" style="font-weight:400;font-size:12px">— seeded from your history; adjust to what you see (1 = lagging, 5 = strong point)</span></h3>
+    <div style="margin-top:10px">
+      ${PHYS_GROUPS.map(g=>`
+        <div style="display:grid;grid-template-columns:132px 1fr 22px;gap:10px;align-items:center;margin-bottom:9px">
+          <span style="font-size:13px">${g.label}</span>
+          <input type="range" min="1" max="5" value="${ratings[g.key]||3}" id="phys_${g.key}" oninput="document.getElementById('phlbl_${g.key}').textContent=this.value">
+          <span class="muted" id="phlbl_${g.key}" style="font-family:var(--mono);text-align:right">${ratings[g.key]||3}</span>
+        </div>`).join('')}
+    </div>
+    <button class="btn primary block" style="margin-top:12px" onclick="runPhysique()">Analyse my physique →</button>
+    <div class="help">//CV: an on-device pose model could later add objective symmetry &amp; proportion measurement — same on-device, no-upload contract.</div>
+  </div>
+
+  <div id="physOut">${a?physiqueResult(a):''}</div>`;
+},
+
+/* ---------- RECOVERY ---------- */
+recovery(){
+  const last=S.readiness[0];
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h3>♥ Daily check-in</h3>
+      <div class="desc">The governor blends these into a readiness estimate. It deliberately expresses a <b>confidence band</b> rather than treating a number as truth — self-report and wearable scores are noisy.</div>
+      ${['sleep','energy','soreness','stress'].map(k=>`
+        <div class="field"><label class="fld">${{sleep:'Sleep quality',energy:'Energy',soreness:'Muscle soreness',stress:'Life stress'}[k]} <span class="muted" id="lbl_${k}">3</span></label>
+        <input type="range" min="1" max="5" value="3" id="rk_${k}" oninput="document.getElementById('lbl_${k}').textContent=this.value"></div>`).join('')}
+      <button class="btn primary block" onclick="submitReadiness()">Compute readiness</button>
+    </div>
+    <div class="card">
+      <h3>Governor read</h3>
+      ${last? `
+        <div class="row" style="align-items:baseline;gap:14px;margin:6px 0 12px"><div class="kpi" style="color:${readColor(last.score)}">${last.score}%</div><div><div class="dim">${esc(last.rec)}</div><div class="muted" style="font-size:12px">confidence: <b>${confBand(last.conf)}</b> · updated ${fmtDate(last.date)}</div></div></div>
+        <div class="rationale">${last.adjust.sets||last.adjust.rpe? `I'd <b>${last.adjust.sets<0?`drop ${-last.adjust.sets} set(s)`:'keep volume'}</b>${last.adjust.rpe?` and <b>cap RPE ${last.adjust.rpe} lower</b>`:''} today. ${S.autonomy.recovery==='auto'?'Autonomy is on — I\'ve applied this to today\'s session.':'This is a suggestion — enable auto in Agents & Policy to have it applied.'}` : 'You\'re recovered — proceed as planned.'}</div>
+        <div class="help">Uncertainty is the point. A wearable "readiness 92" is not clinical truth; the governor hedges and defers to how you actually feel and perform in the first sets.</div>
+      ` : `<div class="empty"><div class="big">♥</div>No check-in yet today.<br>Fill the sliders to get a read.</div>`}
+      <hr class="hr">
+      <div class="muted" style="font-size:12px">Recent</div>
+      ${S.readiness.slice(0,6).map(r=>`<div class="exline"><span>${fmtDate(r.date)}</span><span class="m" style="color:${readColor(r.score)}">${r.score}% · ${confBand(r.conf)}</span></div>`).join('')||'<div class="muted" style="font-size:12px">—</div>'}
+    </div>
+  </div>`;
+},
+
+/* ---------- DIGITAL TWIN ---------- */
+twin(){
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <h3>⧉ Personal digital twin</h3>
+    <div class="desc">Simulate a change before committing. These are <b>directional estimates</b> from your training model — the more you log, the sharper they get. They are not medical or guaranteed outcomes.</div>
+    <div class="row">
+      <button class="btn" onclick="runSim('days')">3 vs 4 vs 5 days/week</button>
+      <button class="btn" onclick="runSim('holiday')">Take a 2-week holiday</button>
+      <button class="btn" onclick="runSim('deficit')">Switch to a calorie deficit</button>
+      <button class="btn" onclick="runSim('strength')">Prioritise strength over size</button>
+    </div>
+  </div>
+  <div id="simOut"></div>`;
+},
+
+/* ---------- ESCALATION ---------- */
+coaches(){
+  const lowConf = S.audit.filter(a=>a.conf<.55).length;
+  const painFlag = S.readiness[0] && S.readiness[0].score<32;
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <h3>⚑ Human escalation</h3>
+    <div class="desc">Atlas knows the edge of its competence. When it sees pain reports, conflicting signals or persistently low confidence, it pauses aggressive progression and prepares a <b>structured handoff</b> — so a trainer or physio gets useful context, not a chat transcript.</div>
+    <div class="row" style="margin:8px 0">
+      <span class="tag ${painFlag?'dng':'good'}">${painFlag?'Low readiness streak detected':'No red flags'}</span>
+      <span class="tag ${lowConf>3?'warn':''}">${lowConf} low-confidence decisions</span>
+    </div>
+    <button class="btn primary" onclick="buildHandoff()">Prepare escalation summary</button>
+    <span class="muted" style="font-size:12px;margin-left:8px">Nothing is sent automatically — sending is your call.</span>
+  </div>
+  <div id="handoffOut"></div>`;
+},
+
+/* ---------- AGENTS & POLICY ---------- */
+agents(){
+  return `
+  <div class="card" style="margin-bottom:16px">
+    <h3>⚙ Autonomy policy</h3>
+    <div class="desc">You decide how much each agent may do on its own. <b>Auto</b> acts and logs; <b>Suggest</b> proposes and waits; <b>Off</b> stays silent. The engine — not a language model — enforces the safe limits behind these toggles.</div>
+    <table>
+      <tr><th>Agent</th><th>What it does</th><th style="text-align:right">Autonomy</th></tr>
+      ${Object.entries(AGENTS).map(([k,a])=>`
+        <tr>
+          <td><b>${a.ic} ${esc(a.name)}</b></td>
+          <td class="muted" style="font-size:12px">${agentDesc(k)}</td>
+          <td style="text-align:right">${['auto','suggest','off'].map(mode=>`<button class="chip ${S.autonomy[k]===mode?'on':''}" style="padding:4px 10px;margin-left:4px" onclick="setAutonomy('${k}','${mode}')">${mode}</button>`).join('')}</td>
+        </tr>`).join('')}
+    </table>
+  </div>
+  <div class="card">
+    <div class="between"><h3>Audit trail</h3><button class="btn ghost sm" onclick="clearAudit()">Clear</button></div>
+    <div class="desc">Full record of every decision: the inputs used, the change made, the reason, the confidence.</div>
+    ${S.audit.length? S.audit.slice(0,30).map(feedRow).join('') : '<div class="muted">No activity yet.</div>'}
+  </div>`;
+},
+
+/* ---------- SETTINGS ---------- */
+settings(){
+  const pr=S.profile;
+  return `
+  <div class="grid g2">
+    <div class="card">
+      <h3>Profile & goal</h3>
+      <div class="field"><label class="fld">Name</label><input id="s_name" value="${esc(pr.name)}"></div>
+      <div class="field"><label class="fld">Primary goal</label><select id="s_goal">${Object.entries(GOALS).map(([k,g])=>`<option value="${k}" ${pr.goal===k?'selected':''}>${g.label}</option>`).join('')}</select></div>
+      <div class="field"><label class="fld">Experience</label><select id="s_exp">${Object.entries(EXPERIENCE).map(([k,e])=>`<option value="${k}" ${pr.experience===k?'selected':''}>${e.label}</option>`).join('')}</select></div>
+      <div class="field"><label class="fld">Training days / week <span class="muted" id="s_days_l">${pr.days}</span></label><input type="range" min="2" max="6" value="${pr.days}" id="s_days" oninput="document.getElementById('s_days_l').textContent=this.value"></div>
+      <div class="field"><label class="fld">Typical session length <span class="muted" id="s_min_l">${pr.sessionMin} min</span></label><input type="range" min="20" max="120" step="5" value="${pr.sessionMin}" id="s_min" oninput="document.getElementById('s_min_l').textContent=this.value+' min'"></div>
+    </div>
+    <div class="card">
+      <h3>Equipment available</h3>
+      <div class="desc">Drives every substitution. The engine will never prescribe something you can't do.</div>
+      <div class="row" style="margin-bottom:16px">${EQUIP_ALL.map(e=>`<span class="chip ${pr.equipment.includes(e)?'on':''}" onclick="toggleArr('equipment','${e}',this)">${e}</span>`).join('')}</div>
+      <h3>Injury restrictions</h3>
+      <div class="desc">Movements loading these areas are excluded everywhere — programme <i>and</i> Mission Mode.</div>
+      <div class="row">${['shoulder','knee','lowerback','elbow','wrist','hip'].map(a=>`<span class="chip ${pr.restrictions.includes(a)?'on':''}" onclick="toggleArr('restrictions','${a}',this)">${a}</span>`).join('')}</div>
+      <hr class="hr">
+      <button class="btn primary" onclick="saveSettings()">Save profile</button>
+      <button class="btn" onclick="doGenerate()">Save & regenerate programme</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Data</h3>
+    <div class="desc">Everything lives in your browser's localStorage. Health & training data is sensitive — Atlas keeps it on-device by default.</div>
+    <div class="row">
+      <button class="btn" onclick="exportData()">⭳ Export JSON</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()">⭱ Import JSON</button>
+      <button class="btn" onclick="loadDemo()">Load demo data</button>
+      <button class="btn danger" onclick="wipe()">Erase everything</button>
+      <input type="file" id="importFile" class="hidden" accept="application/json" onchange="importData(event)">
+    </div>
+  </div>`;
+},
+};
+
+/* ---------- small render helpers ---------- */
+function agentDesc(k){return {director:'Turns your goal into a multi-week plan; schedules, progresses, inserts deloads, reallocates missed work.',conductor:'Runs the live session — timers, set logging, RPE-based auto-regulation within safe limits.',substitution:'Swaps occupied/unavailable equipment for equivalents that preserve the muscle stimulus.',recovery:'Reads recovery signals and recommends maintain / reduce / redistribute — with uncertainty.',habit:'Predicts an at-risk session and offers a proportional rescue instead of a nag.',physique:'On-device physique check: fuses your photo self-assessment with training data to flag weak points and build a specialization plan. Never uploads or face-recognizes.',nutrition:'Builds meals & shopping around training. Off by default.'}[k];}
+function readColor(s){return s>=72?'var(--good)':s>=50?'var(--accent)':s>=32?'var(--warn)':'var(--danger)';}
+function trendTag(series){if(series.length<2)return '';return series.at(-1).v>=series[0].v?'good':'warn';}
+function trendLabel(series){if(series.length<2)return 'new';const d=series.at(-1).v-series[0].v;return d>0?`▲ +${d}kg`:d<0?`▼ ${d}kg`:'flat';}
+function feedRow(a){
+  const ag=AGENTS[a.agent]||{name:a.agent,ic:'•'};
+  const when=new Date(a.t).toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+  return `<div class="evt ${a.kind}">
+    <div class="who">${ag.ic} ${esc(ag.name)} <span class="mode-badge mode-${a.mode}">${a.mode}</span></div>
+    <div class="msg">${esc(a.msg)}</div>
+    <div class="meta"><span class="conf">conf <b style="color:${a.conf>=.7?'var(--good)':a.conf>=.5?'var(--warn)':'var(--danger)'}">${Math.round(a.conf*100)}%</b> (${confBand(a.conf)})</span><span>${when}</span>${a.inputs&&a.inputs.length?`<span>inputs: ${a.inputs.map(esc).join(', ')}</span>`:''}</div>
+  </div>`;
+}
+function volumeChart(vol){
+  const max=Math.max(8,...Object.values(vol));
+  return `<div style="display:grid;gap:6px;margin-top:8px">${MUSCLES.map(m=>{
+    const v=vol[m]||0; const w=clamp(v/max*100,0,100);
+    const low=v<6;
+    return `<div style="display:grid;grid-template-columns:88px 1fr 34px;gap:8px;align-items:center;font-size:12px">
+      <span class="muted">${MUSCLE_LABEL[m]}</span>
+      <div class="bar"><i style="width:${w}%;background:${low?'linear-gradient(90deg,var(--warn),var(--warn))':'linear-gradient(90deg,var(--accent),var(--accent2))'}"></i></div>
+      <span style="font-family:var(--mono);text-align:right;color:${low?'var(--warn)':'var(--ink2)'}">${Math.round(v)}</span>
+    </div>`;}).join('')}</div>
+    <div class="legend" style="margin-top:10px"><span><i style="background:var(--warn)"></i>under-trained (&lt;6 sets)</span><span><i style="background:var(--accent)"></i>on target</span></div>`;
+}
+function sparkline(vals){
+  if(!vals.length)return '';
+  const w=520,h=64,pad=6; const min=Math.min(...vals),max=Math.max(...vals);
+  const rng=max-min||1;
+  const pts=vals.map((v,i)=>[pad+i/(vals.length-1||1)*(w-2*pad), h-pad-(v-min)/rng*(h-2*pad)]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+  const area=`${d} L ${pts.at(-1)[0].toFixed(1)} ${h} L ${pts[0][0].toFixed(1)} ${h} Z`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none">
+    <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    <path d="${area}" fill="url(#sg)"/>
+    <path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="2.6" fill="var(--accent2)"/>`).join('')}
+  </svg>`;
+}
+function missionResult(s){
+  return `
+  <div class="card" style="margin-top:16px;border-color:var(--accent)">
+    <div class="between"><h3>${esc(s.name)} · ${s.minutes} min</h3>
+      <div class="row"><span class="tag ${s.confidence>=.7?'good':s.confidence>=.5?'acc':'warn'}">confidence ${Math.round(s.confidence*100)}% · ${confBand(s.confidence)}</span><button class="btn primary sm" onclick="startSession('mission')">▶ Run it</button></div>
+    </div>
+    <div class="rationale">${s.rationale}</div>
+    <div style="margin-top:14px">
+      ${s.exercises.map((e,i)=>{const x=EXBYID[e.id];return x?`<div class="exline"><span><b>${i+1}.</b> ${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span>${x.contra.length?`<span class="muted" style="font-size:11px"> · loads ${x.contra.join('/')}</span>`:''}</span><span class="m">${e.sets}×${e.repLo}-${e.repHi} · RPE ${e.rpe}${e.load?` · ~${e.load}kg`:''}</span></div>`:''}).join('')}
+    </div>
+    ${s.deferred.length?`<div class="help" style="margin-top:12px">↪ <b>Reconciled with your week:</b> ${s.deferred.map(esc).join('; ')}. The Director will surface the deferred work on your next slot.</div>`:''}
+  </div>`;
+}
+
+/* ================================================================
+   8. ACTIONS / event handlers
+   ================================================================ */
+function bindView(v){
+  if(v==='dash'||v==='program'){}
+}
+function doGenerate(){ saveSettings(true); generateProgram(); toast('Programme generated'); nav('program'); }
+function advanceWeek(){ S.weekIndex++; save(); const deload=(S.weekIndex+1)%S.program.deloadEvery===0; logAgent('director',`Advanced to week ${S.weekIndex+1}. ${deload?'Scheduled deload — sets ~40% down and RPE eased.':'Rep targets climb toward the top of each range (double-progression); load rises as you complete them.'}`,{conf:.8,inputs:['adherence','last week performance'],mode:'auto',kind:'auto'}); nav('program'); toast(deload?'Week advanced · deload':'Week advanced'); }
+
+function runMission(){
+  const el=$('#missionInput'); if(!el)return;           // guard: user may have navigated away (async voice)
+  const txt=el.value.trim();
+  if(!txt){toast('Describe your situation first','✎');return;}
+  generateMission(txt);
+  const out=$('#missionOut'); if(out){ out.innerHTML=missionResult(S.lastMission); out.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+}
+function micMission(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice input not supported in this browser','🎙');return;}
+  const r=new SR(); r.lang='en-US'; r.interimResults=false;
+  const btn=$('#micBtn'); if(btn)btn.textContent='● listening…';
+  r.onresult=e=>{ const el=$('#missionInput'); if(el){ el.value=e.results[0][0].transcript; runMission(); } };
+  r.onerror=()=>{ const b=$('#micBtn'); if(b)b.textContent='🎙 Speak'; };
+  r.onend=()=>{ const b=$('#micBtn'); if(b)b.textContent='🎙 Speak'; };
+  r.start();
+}
+function discardActive(){ if(S.activeSession && !confirm('Discard the in-progress session and its logged sets?'))return; S.activeSession=null; COND=null; save(); nav('dash'); toast('Paused session discarded'); }
+
+function setAutonomy(agent,mode){ S.autonomy[agent]=mode; save(); logAgent(agent,`Autonomy set to ${mode} by you.`,{conf:1,inputs:['user'],mode,kind:mode}); nav('agents'); }
+function clearAudit(){ S.audit=[]; save(); renderFeed(); nav('agents'); }
+
+function submitReadiness(){
+  const g=k=>+$('#rk_'+k).value;
+  const inp={sleep:g('sleep'),energy:g('energy'),soreness:g('soreness'),stress:g('stress')};
+  const res=computeReadiness(inp);
+  const row={date:todayISO(), ...inp, score:res.score, conf:res.conf, rec:res.rec, adjust:res.adjust};
+  S.readiness=S.readiness.filter(r=>r.date!==row.date); S.readiness.unshift(row);
+  save();
+  // Recovery governor: gated action
+  if(res.adjust.sets||res.adjust.rpe){
+    agentAct('recovery',{
+      act:()=>{ /* applied at session build time via readiness lookup */ },
+      suggestMsg:`readiness ${res.score}% — ${res.rec}`,
+      actMsg:`Readiness ${res.score}% (conf ${confBand(res.conf)}). Applied to today: ${res.rec}`,
+      conf:res.conf, inputs:['sleep','energy','soreness','stress']
+    });
+  } else {
+    logAgent('recovery',`Readiness ${res.score}% — recovered, proceeding as planned.`,{conf:res.conf,inputs:['sleep','energy','soreness','stress'],mode:S.autonomy.recovery});
+  }
+  updateReadinessPill();
+  nav('recovery'); toast('Readiness computed');
+}
+
+function runSim(scenario){
+  const o=simulate(scenario);
+  logAgent('director',`Ran twin simulation: ${o.title}.`,{conf:.6,inputs:['programme','logs'],mode:'auto',kind:'auto'});
+  $('#simOut').innerHTML=`
+  <div class="card">
+    <h3>${esc(o.title)}</h3>
+    <table style="margin-top:8px"><tr><th>Scenario</th><th>Projection</th><th>Read</th></tr>
+    ${o.rows.map(r=>`<tr><td><b>${esc(r.label)}</b></td><td style="font-family:var(--mono);color:${r.proj>0?'var(--good)':r.proj<0?'var(--warn)':'var(--ink2)'}">${r.vol!=null?r.vol+' sets/wk':(r.proj>0?'+':'')+(r.proj||'—')+(typeof r.proj==='number'&&r.proj!==0?'%':'')}</td><td class="muted">${esc(r.note)}</td></tr>`).join('')}
+    </table>
+    <div class="help" style="margin-top:12px">⚠ ${esc(o.caveat)}</div>
+  </div>`;
+}
+
+function buildHandoff(){
+  const last=S.readiness[0];
+  const stalled=topLifts().filter(l=>l.series.length>=3 && l.series.at(-1).v<=l.series[0].v).map(l=>EXBYID[l.id].n);
+  const summary=`ATLAS — ESCALATION SUMMARY (${todayISO()})
+Athlete: ${S.profile.name} · goal ${GOALS[S.profile.goal].label} · ${S.profile.experience} · ${S.profile.days}d/wk
+Restrictions on file: ${S.profile.restrictions.join(', ')||'none'}
+Latest readiness: ${last?`${last.score}% (confidence ${confBand(last.conf)})`:'no recent check-in'}
+Adherence (4wk): ${adherence(4).pct}%
+Stalled lifts (≥3 sessions, no e1RM gain): ${stalled.join(', ')||'none detected'}
+Low-confidence agent decisions (last 30): ${S.audit.filter(a=>a.conf<.55).length}
+Action taken by Atlas: ${isProgressionPaused()?'progression paused — upward load auto-adjustments are held pending review':'no red-flag pause active; progression continuing normally'}.
+Recommended for the professional: review flagged lifts / any pain reports; confirm restriction list; advise on progression.`;
+  logAgent('director',`Prepared a structured escalation summary for a human coach/physio. Not sent — awaiting your approval.`,{conf:.85,inputs:['readiness','stalled lifts','audit'],mode:'suggest',kind:'suggest'});
+  $('#handoffOut').innerHTML=`<div class="card">
+    <div class="between"><h3>Structured handoff — ready</h3><span class="tag warn">not sent</span></div>
+    <div class="desc">Sending a message on your behalf needs your explicit go-ahead. Copy this into an email/DM to your trainer or physio.</div>
+    <textarea readonly style="min-height:220px;font-family:var(--mono);font-size:12px">${esc(summary)}</textarea>
+    <div class="row" style="margin-top:10px"><button class="btn" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value);toast('Copied')">⧉ Copy</button><span class="muted" style="font-size:12px">Atlas won't email this itself — that's your call.</span></div>
+  </div>`;
+}
+
+function rescue(i){
+  const hk=S.autonomy.habit, hkKind=hk==='off'?'block':hk;
+  if(i===0){ // 20-min express — actually build & start it
+    generateMission('20 minutes, quick session');
+    logAgent('habit','Rescued the session with a 20-min express version instead of a skip.',{conf:.7,inputs:['time of day','adherence'],mode:hk,kind:hkKind});
+    startSession('mission');
+  } else if(i===1){ // deferral — honest: the repeating week plan is unchanged, we just note it
+    logAgent('habit',"Deferred today's session to your next training slot — your week plan is unchanged.",{conf:.6,inputs:['calendar','adherence'],mode:hk,kind:hkKind});
+    toast('Deferred to your next slot'); nav('dash');
+  } else { // mobility — actually log it so the streak is genuinely protected
+    S.logs.unshift({date:todayISO(), name:'Mobility + 15-min walk', mobility:true, exercises:[]}); save();
+    logAgent('habit','Logged mobility + a 15-min walk to protect the streak.',{conf:.68,inputs:['adherence'],mode:hk,kind:hkKind});
+    toast('Logged mobility + walk'); nav('dash');
+  }
+}
+
+/* ---------- Physique Check actions (all on-device) ---------- */
+let PHY={photos:[]};
+function hydratePhotos(){ if(!PHY.photos.length && S.physique.savedPhotos.length) PHY.photos=S.physique.savedPhotos.map(p=>({...p})); }
+function giveConsent(){ S.physique.consent=true; save(); logAgent('physique','Physique Check consent given — photos stay on-device, no upload, no face recognition.',{conf:1,inputs:['user'],mode:S.autonomy.physique,kind:'suggest'}); nav('physique'); }
+function downscaleImage(file, cb){
+  const img=new Image(); const url=URL.createObjectURL(file);
+  img.onload=()=>{ const max=760; let w=img.naturalWidth||img.width, h=img.naturalHeight||img.height; const sc=Math.min(1,max/Math.max(w,h)); w=Math.round(w*sc); h=Math.round(h*sc); const c=document.createElement('canvas'); c.width=w; c.height=h; c.getContext('2d').drawImage(img,0,0,w,h); URL.revokeObjectURL(url); try{ cb(c.toDataURL('image/jpeg',0.82)); }catch(e){ toast('Could not process image','⚠'); } };
+  img.onerror=()=>{ URL.revokeObjectURL(url); toast('Could not read that image','⚠'); };
+  img.src=url;
+}
+function handlePhoto(e){ const f=e.target.files&&e.target.files[0]; e.target.value=''; if(!f)return; if(PHY.photos.length>=3){toast('Up to 3 photos','📸');return;} downscaleImage(f, url=>{ const label=['Front','Back','Side'][PHY.photos.length]||'Photo'; PHY.photos.push({label,url}); const keep=$('#phys_keep'); if(keep&&keep.checked){ S.physique.savedPhotos=PHY.photos.map(p=>({...p})); save(); } syncRatings(); nav('physique'); }); }
+function removePhoto(i){ PHY.photos.splice(i,1); if(S.physique.savedPhotos.length){ S.physique.savedPhotos=PHY.photos.map(p=>({...p})); save(); } nav('physique'); }
+function toggleSavePhotos(el){ if(el.checked){ S.physique.savedPhotos=PHY.photos.map(p=>({...p})); toast('Photos will stay on this device'); } else { S.physique.savedPhotos=[]; toast('Photos won\'t be saved'); } save(); }
+function syncRatings(){ if($('#phys_'+PHYS_GROUPS[0].key)){ const r={}; PHYS_GROUPS.forEach(g=>{ const el=$('#phys_'+g.key); if(el) r[g.key]=+el.value; }); S.physique.ratings=r; } }
+function runPhysique(){
+  syncRatings();
+  const a=analyzePhysique(S.physique.ratings||seedRatingsFromVolume());
+  S.physique.lastAnalysis=a; S.physique.updatedISO=todayISO(); save();
+  logAgent('physique',`Physique scan: flagged ${a.weakPoints.map(w=>w.label).join(', ')||'no clear weak points'} (confidence ${confBand(a.conf)}). Photo processed on-device only.`,{conf:a.conf,inputs:['self-assessment','7-day volume','stalled lifts'],mode:S.autonomy.physique,kind:S.autonomy.physique==='off'?'block':'suggest'});
+  nav('physique'); setTimeout(()=>{const o=$('#physOut'); if(o)o.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
+}
+function applyPhysiquePlan(){
+  const a=S.physique.lastAnalysis; if(!a){toast('Run a scan first');return;}
+  if(!S.program){ if(confirm('You have no programme yet. Build one now, then add the specialization?')){ generateProgram(); } else return; }
+  const spec=buildSpecialization(a.weakPoints); const res=applySpecialization(spec);
+  if(res.added){ logAgent('physique',`Added a specialization block (${res.added} exercises) for ${res.muscles.join(', ')} to your programme.`,{conf:.7,inputs:['weak points','equipment','programme'],mode:'auto',kind:'auto'}); toast(`Added ${res.added} exercises to your plan`); nav('program'); }
+  else { toast('Those exercises are already in your plan','✓'); }
+}
+function deletePhysiqueData(){ if(!confirm('Delete all physique photos and analysis from this device? This cannot be undone.'))return; PHY.photos=[]; S.physique={consent:true, ratings:null, savedPhotos:[], lastAnalysis:null, updatedISO:null}; save(); logAgent('physique','Physique photos & analysis deleted from this device at your request.',{conf:1,inputs:['user'],mode:S.autonomy.physique,kind:'suggest'}); nav('physique'); toast('Physique data deleted'); }
+function physiqueResult(a){
+  const spec=buildSpecialization(a.weakPoints);
+  const maxScore=Math.max(0.4,...a.all.map(r=>r.score));
+  return `
+  <div class="card" style="margin-bottom:16px;border-color:var(--accent)">
+    <div class="between"><h3>Weak points <span class="muted" style="font-weight:400;font-size:12px">— ranked</span></h3><span class="tag ${a.conf>=.6?'acc':'warn'}">confidence ${Math.round(a.conf*100)}% · ${confBand(a.conf)}</span></div>
+    <div class="help" style="margin-bottom:10px">⚠ Directional guidance from a photo + self-report + your logs — <b>not a diagnosis</b>. Treat it as a hypothesis to test over the next few weeks.</div>
+    ${a.weakPoints.map((w,i)=>`
+      <div class="exline" style="align-items:flex-start"><span><b>${i+1}. ${esc(w.label)}</b><div class="muted" style="font-size:11.5px">${esc(w.reasons.join(' · ')||'balanced')}</div></span>
+      <span class="m" style="min-width:90px;text-align:right"><span class="bar" style="width:80px;display:inline-block;vertical-align:middle"><i style="width:${Math.round(w.score/maxScore*100)}%;background:linear-gradient(90deg,var(--warn),var(--danger))"></i></span></span></div>`).join('')}
+  </div>
+  <div class="card">
+    <div class="between"><h3>Your bring-up plan</h3><button class="btn primary sm" onclick="applyPhysiquePlan()">＋ Add to my programme</button></div>
+    <div class="desc">Extra targeted volume for your weak points — equipment- and injury-aware. Adding it slots these into the best day of your week (deduplicated).</div>
+    ${spec.map(s=>`
+      <div style="margin:10px 0;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px">
+        <b style="font-size:13px">${esc(s.label)} <span class="tag acc" style="padding:1px 7px">+${s.addSets} sets/wk</span></b>
+        ${s.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span></span><span class="m">${e.sets}×${e.repLo}-${e.repHi} · RPE ${e.rpe}</span></div>`:''}).join('')}
+      </div>`).join('')||'<div class="muted">No suitable exercises for your current equipment — add equipment in Settings.</div>'}
+  </div>`;
+}
+
+/* ---------- Settings actions ---------- */
+function toggleArr(key,val,el){
+  const arr=S.profile[key]; const i=arr.indexOf(val);
+  if(i>=0)arr.splice(i,1); else arr.push(val);
+  el.classList.toggle('on'); save();
+}
+function saveSettings(silent){
+  if($('#s_name')){
+    S.profile.name=$('#s_name').value||'Athlete';
+    S.profile.goal=$('#s_goal').value;
+    S.profile.experience=$('#s_exp').value;
+    S.profile.days=+$('#s_days').value;
+    S.profile.sessionMin=+$('#s_min').value;
+  }
+  save(); if(!silent)toast('Saved');
+}
+function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='atlas-data.json'; a.click(); URL.revokeObjectURL(u); }
+function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const next=normalizeState(JSON.parse(r.result)); S=next; save(); toast('Imported'); nav('dash'); updateReadinessPill(); renderFeed(); }catch(err){toast('Invalid or unreadable file','⚠');} }; r.readAsText(f); }
+function wipe(){ if(confirm('Erase all Atlas data on this device? This cannot be undone.')){ localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); save(); nav('dash'); toast('Erased'); updateReadinessPill(); renderFeed(); } }
+
+/* ---------- Drawer / feed ---------- */
+function toggleDrawer(){ $('#drawer').classList.toggle('open'); }
+function renderFeed(){ if($('#feed'))$('#feed').innerHTML = S.audit.length? S.audit.map(feedRow).join('') : '<div class="muted" style="padding:20px 0">No agent activity yet. Actions appear here with confidence and the inputs used.</div>'; if($('#feedCount'))$('#feedCount').textContent=S.audit.length; }
+function updateReadinessPill(){ const r=S.readiness[0]; $('#readVal').textContent=r?r.score+'%':'—'; if(r)$('#readinessPill').querySelector('.dot').style.background=readColor(r.score); }
+
+/* ================================================================
+   9. LIVE WORKOUT CONDUCTOR
+   ================================================================ */
+let COND=null; // {session, exIdx, timerId, rest}
+function startSession(kind, dayIdx){
+  let session;
+  if(kind==='mission'){ if(!S.lastMission){toast('Build a Mission session first');nav('mission');return;} session=structuredClone(S.lastMission); }
+  else { if(!S.program){toast('No programme yet — build one first','⚠');return;} const d=S.program.week[dayIdx!=null?dayIdx:(S.weekIndex%S.program.week.length)]; session={name:d.name, exercises:applyWeek(structuredClone(d.exercises)), program:true}; }
+  // drop any exercise whose id isn't in the DB (e.g. a stale import) so the conductor can't crash
+  session.exercises=(session.exercises||[]).filter(e=>EXBYID[e.id]);
+  if(!session.exercises.length){ toast('No exercises available — check your equipment settings','⚠'); return; }
+  // Recovery governor: only MUTATES the session in AUTO mode (suggest just informs; matches the Recovery view copy).
+  const r=S.readiness[0];
+  const fresh = r && r.date===todayISO();
+  const fatLevel = fresh ? (r.score<50?2:r.score<72?1:0) : 0;
+  if(fresh && (r.adjust.sets||r.adjust.rpe) && S.autonomy.recovery==='auto'){
+    session.exercises.forEach(e=>{ if(EXBYID[e.id].comp){ e.sets=Math.max(1,e.sets+r.adjust.sets); } e.rpe=clamp(e.rpe+r.adjust.rpe,6,9); });
+    session._recoveryApplied=true;
+  }
+  // seed per-set logs & suggested load; on a low-readiness day the fatigue-reduced load wins for BOTH program & mission sessions
+  session.exercises.forEach(e=>{ const pr=prescribe(EXBYID[e.id],{goal:S.profile.goal,fatigue:fatLevel}); const seed = fatLevel? (pr.load||e.load) : (e.load||pr.load); e.log=Array.from({length:e.sets},()=>({w:seed||'',r:'',rpe:null})); e.targetReps=e.targetReps||Math.round((e.repLo+e.repHi)/2); e.suggested=seed; });
+  COND={session, exIdx:0, rest:0, timerId:null};
+  S.activeSession=session; save();
+  $('#conductor').classList.add('on');
+  renderConductor();
+  logAgent('conductor',`Session started: ${session.name} (${session.exercises.length} exercises)${session._recoveryApplied?' — recovery adjustment applied.':'.'}`,{conf:.8,inputs:['programme',session._recoveryApplied?'readiness':''].filter(Boolean),mode:S.autonomy.conductor,kind:S.autonomy.conductor==='off'?'block':S.autonomy.conductor});
+}
+function resumeSession(){ if(!S.activeSession)return; COND=COND||{session:S.activeSession, exIdx:0, rest:0, timerId:null}; $('#conductor').classList.add('on'); renderConductor(); }
+function renderConductor(){
+  const c=COND; const s=c.session;
+  if(!s.exercises.length){ stopSession(false); return; }
+  if(c.exIdx>=s.exercises.length) c.exIdx=s.exercises.length-1;
+  const ex=s.exercises[c.exIdx]; const x=EXBYID[ex.id];
+  if(!x){ if(c.exIdx<s.exercises.length-1){ nextEx(); } else { stopSession(false); } return; }
+  const mode=S.autonomy.conductor;
+  $('#conductor').innerHTML=`
+    <div class="cond-top">
+      <b>✦ ${esc(s.name)}</b>
+      <span class="tag">${c.exIdx+1} / ${s.exercises.length}</span>
+      <span class="mode-badge mode-${mode}">${mode==='auto'?'auto-managing':'suggesting'}</span>
+      <div style="flex:1"></div>
+      <button class="btn ghost sm" onclick="stopSession(false)">Pause</button>
+      <button class="btn sm" onclick="finishSession()">Finish & log</button>
+    </div>
+    <div class="cond-body">
+      <div class="cond-card">
+        <div class="mini-list">${s.exercises.map((e,i)=>`<span class="${i===c.exIdx?'now':i<c.exIdx?'done':''}">${esc((EXBYID[e.id]?.n||'—').split(' ').slice(-1)[0])}</span>`).join('')}</div>
+        <h2 style="margin:14px 0 2px">${esc(x.n)}</h2>
+        <div class="muted">Target ${ex.sets}×${ex.repLo}-${ex.repHi} · RPE ${ex.rpe} ${ex.suggested?`· suggested ~${ex.suggested}kg`:'· pick a starting weight'}</div>
+
+        <div class="timer-ring" id="ring" style="${c.rest>0?'':'opacity:.25'}">
+          <svg width="200" height="200"><circle cx="100" cy="100" r="88" fill="none" stroke="#1a2732" stroke-width="10"/><circle id="ringArc" cx="100" cy="100" r="88" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${2*Math.PI*88}" stroke-dashoffset="0"/></svg>
+          <div class="t" id="ringT">${c.rest>0?fmtT(c.rest):'rest'}</div>
+        </div>
+
+        <div class="setgrid">
+          ${ex.log.map((st,i)=>`<div class="setbox ${st.r?'done':''} ${i===currentSet(ex)?'active':''}">
+            <div class="muted" style="font-size:10px">SET ${i+1}</div>
+            <div class="w">${st.w||'—'}</div>
+            <div class="muted" style="font-size:11px">${st.r?st.r+' reps':''}${st.rpe?` @${st.rpe}`:''}</div>
+          </div>`).join('')}
+        </div>
+
+        <div id="setEntry">${setEntry(ex)}</div>
+        <div class="cue" id="cue">${x.contra.length?`One cue: keep it clean on the ${x.contra[0]} — stop a rep short of failure.`:'One cue at a time — control the eccentric, own the range of motion.'}</div>
+
+        <div class="row" style="justify-content:center;margin-top:8px">
+          <button class="btn ghost sm" onclick="swapExercise()">⇄ Swap (busy/occupied)</button>
+          <button class="btn ghost sm" onclick="prevEx()" ${c.exIdx===0?'disabled':''}>← Prev</button>
+          <button class="btn sm" onclick="nextEx()">Next exercise →</button>
+        </div>
+      </div>
+    </div>`;
+}
+function currentSet(ex){ const i=ex.log.findIndex(s=>!s.r); return i<0?ex.log.length-1:i; }
+function setEntry(ex){
+  const i=currentSet(ex);
+  if(ex.log.every(s=>s.r)) return `<div class="tag good">All ${ex.sets} sets logged ✓</div>`;
+  const st=ex.log[i];
+  return `<div style="max-width:340px;margin:0 auto">
+    <div class="row" style="justify-content:center;gap:8px">
+      <div><label class="fld" style="text-align:center">Weight (kg)</label><input id="in_w" type="number" inputmode="decimal" value="${st.w}" style="width:90px;text-align:center"></div>
+      <div><label class="fld" style="text-align:center">Reps</label><input id="in_r" type="number" inputmode="numeric" placeholder="${ex.targetReps}" style="width:74px;text-align:center"></div>
+    </div>
+    <label class="fld" style="text-align:center;margin-top:10px">How did that set feel? (RPE)</label>
+    <div class="rpe-scale">${[6,7,8,9,10].map(n=>`<button id="rpe_${n}" onclick="pickRPE(${n})">${n}</button>`).join('')}</div>
+    <button class="btn primary block" onclick="logSet()">Log set & start rest</button>
+    <div class="help" style="text-align:center">Voice: <button class="btn ghost sm" onclick="voiceSet()">🎙 “eighty for eight”</button></div>
+  </div>`;
+}
+let pendingRPE=null;
+function pickRPE(n){ pendingRPE=n; [6,7,8,9,10].forEach(x=>$('#rpe_'+x)?.classList.toggle('on',x===n)); }
+function logSet(){
+  const c=COND; const ex=c.session.exercises[c.exIdx]; const i=currentSet(ex);
+  const w=parseFloat($('#in_w').value)||ex.suggested||0;
+  const reps=parseInt($('#in_r').value)|| ex.targetReps;
+  const rpe=pendingRPE||ex.rpe;
+  ex.log[i]={w,r:reps,rpe};
+  pendingRPE=null; save();
+  // Auto-regulation: adjust the NEXT set's suggested load within limits
+  autoRegulate(ex, i, rpe, reps);
+  // start rest timer
+  startRest(ex.rest||90);
+  renderConductor();
+}
+function autoRegulate(ex, i, rpe, reps){
+  if(i+1>=ex.log.length) return;
+  const next=ex.log[i+1];
+  const mode=S.autonomy.conductor;
+  let delta=0, why='';
+  if(rpe<=ex.rpe-2 && reps>=ex.repHi){ delta=+2.5; why='came in easy — nudge load up 2.5kg'; }
+  else if(rpe>=ex.rpe+2 || reps<ex.repLo){ delta=-2.5; why='harder than target — ease load 2.5kg'; }
+  else if(rpe>=ex.rpe+1){ delta=0; why='near target — hold load, expect fewer reps'; }
+  else { why='on target — hold load'; }
+  // Never increase load on a red-flag recovery day (see Escalation → progression pause).
+  if(delta>0 && isProgressionPaused()){ delta=0; why='progression paused (low-readiness flag) — holding load'; }
+  // Only AUTO mode may mutate the next set; suggest/off inform without acting.
+  const applied = mode==='auto' && delta && next.w;
+  if(applied) next.w=Math.max(0, round(next.w+delta,2.5));
+  const verb = mode==='auto' ? (delta?'Adjusted':'Holding') : (mode==='off'?'Held':'Suggests');
+  const cueEl=$('#cue'); if(cueEl) cueEl.textContent = verb+': '+why+'.';
+  logAgent('conductor', `${verb} next set: ${why} (RPE ${rpe}, ${reps} reps on ${EXBYID[ex.id]?.n||'exercise'}).`, {conf:.66, inputs:['reported RPE','reps','target'], mode, kind: mode==='off'?'block':mode});
+}
+function voiceSet(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Voice not supported here','🎙');return;}
+  const r=new SR(); r.lang='en-US';
+  r.onresult=e=>{ const t=e.results[0][0].transcript.toLowerCase(); parseVoiceSet(t); };
+  r.start(); toast('Listening… e.g. “80 for 8”','🎙');
+}
+const NUMW={one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,fifteen:15,twenty:20};
+function w2n(s){ return NUMW[s]!=null?NUMW[s]:parseFloat(s); }
+function parseVoiceSet(t){
+  // "eighty for eight", "80 by 8 at rpe 8", "100 kilos 5 reps"
+  const nums=[...t.matchAll(/(\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty)/g)].map(m=>w2n(m[1]));
+  if(nums.length>=2){ if($('#in_w'))$('#in_w').value=nums[0]; if($('#in_r'))$('#in_r').value=nums[1]; const rpe=t.match(/rpe\s*(\d+)/); if(rpe)pickRPE(+rpe[1]); toast(`Heard: ${nums[0]}kg × ${nums[1]}`); }
+  else toast('Didn\'t catch it — try “80 for 8”','🎙');
+}
+function startRest(sec){
+  const c=COND; c.rest=sec; c._restTotal=sec;
+  clearInterval(c.timerId);
+  c.timerId=setInterval(()=>{
+    c.rest--; updateRing();
+    if(c.rest<=0){ clearInterval(c.timerId); c.rest=0; try{beep();}catch(e){} const t=$('#ringT'); if(t)t.textContent='go'; }
+  },1000);
+  updateRing();
+}
+function updateRing(){
+  const c=COND; const t=$('#ringT'); const arc=$('#ringArc'); const ring=$('#ring');
+  if(!t||!arc)return;
+  t.textContent=c.rest>0?fmtT(c.rest):'go';
+  if(ring)ring.style.opacity=c.rest>0?'1':'.35';
+  const circ=2*Math.PI*88; const frac=c._restTotal?c.rest/c._restTotal:0;
+  arc.style.strokeDashoffset=circ*(1-frac);
+}
+function fmtT(s){ const m=Math.floor(s/60); return m?`${m}:${String(s%60).padStart(2,'0')}`:`${s}s`; }
+function beep(){ const a=new (window.AudioContext||window.webkitAudioContext)(); const o=a.createOscillator(); const g=a.createGain(); o.connect(g); g.connect(a.destination); o.frequency.value=660; g.gain.value=.08; o.start(); setTimeout(()=>{o.stop();a.close();},180); }
+function nextEx(){ if(COND.exIdx<COND.session.exercises.length-1){COND.exIdx++; clearInterval(COND.timerId); COND.rest=0; renderConductor();} else finishSession(); }
+function prevEx(){ if(COND.exIdx>0){COND.exIdx--; clearInterval(COND.timerId); COND.rest=0; renderConductor();} }
+function swapExercise(){
+  const c=COND; const ex=c.session.exercises[c.exIdx]; const x0=EXBYID[ex.id]; if(!x0)return;
+  const restrict=[...(c.session.mission?.restrict||[])];                                   // honor the session's ephemeral injury restriction
+  const exclude=new Set(c.session.exercises.filter((_,i)=>i!==c.exIdx).map(e=>e.id));      // don't duplicate a movement already in the day
+  const subs=substitutes(ex.id,{crowded:true, restrict, exclude});
+  if(!subs.length){toast('No safe equivalent available for that slot','⇄');return;}
+  const pick=subs[0]; const old=x0.n;
+  const applied=agentAct('substitution',{
+    act:()=>{
+      ex.id=pick.id;
+      const r=S.readiness[0];
+      const pr=prescribe(pick,{goal:S.profile.goal, fatigue:r&&r.date===todayISO()?(r.score<50?2:r.score<72?1:0):0});
+      ex.repLo=pr.repLo; ex.repHi=pr.repHi; ex.rpe=pr.rpe; ex.rest=pr.rest; ex.targetReps=Math.round((pr.repLo+pr.repHi)/2);
+      ex.suggested = pick.eq==='bodyweight'? null : pr.load;                                // recompute for the NEW movement, don't carry the old load
+      ex.log.forEach(s=>{ if(!s.r) s.w=ex.suggested||''; });                                // keep any already-logged sets
+      save();
+    },
+    suggestMsg:`swap ${old} → ${pick.n} (same ${pick.p} pattern, keeps ${pick.pri.map(m=>MUSCLE_LABEL[m]).join('/')})`,
+    actMsg:`Swapped ${old} → ${pick.n}: station occupied — equivalent preserves the ${pick.p} stimulus${restrict.length?`, still protecting ${restrict.join('/')}`:''}.`,
+    conf:.72, inputs:['equipment','movement pattern','muscle overlap', restrict.length?'restriction':''].filter(Boolean)
+  });
+  if(applied){ toast(`Swapped → ${pick.n}`); renderConductor(); }
+  else { toast(`Navigator ${S.autonomy.substitution==='off'?'is off — swap held':'suggests'} → ${pick.n}`,'⇄'); }
+}
+function stopSession(finished){ clearInterval(COND?.timerId); $('#conductor').classList.remove('on'); if(!finished){ toast('Session paused — resume it from the dashboard'); } }
+function finishSession(){
+  const s=COND.session;
+  const entry={date:todayISO(), name:s.name, mission:!!s.mission, exercises:s.exercises.map(e=>({id:e.id, sets:e.log.filter(l=>l.r||l.w).map(l=>({w:+l.w||0,r:+l.r||0,rpe:l.rpe||null}))}))};
+  entry.exercises=entry.exercises.filter(e=>e.sets.length);
+  S.logs.unshift(entry);
+  S.activeSession=null; save();
+  clearInterval(COND.timerId); $('#conductor').classList.remove('on'); COND=null;
+  logAgent('conductor',`Session logged: ${entry.exercises.length} exercises, ${entry.exercises.reduce((a,e)=>a+e.sets.length,0)} sets. Performance model updated.`,{conf:.85,inputs:['set logs'],mode:'auto',kind:'auto'});
+  toast('Session logged ✓'); nav('dash');
+}
+
+/* ================================================================
+   10. DEMO DATA — so the app is alive on first open
+   ================================================================ */
+function loadDemo(){
+  if((S.logs&&S.logs.length) || S.program){ if(!confirm('Replace your current programme and logs with demo data? This cannot be undone.')) return; }
+  S=structuredClone(DEFAULT_STATE);
+  S.profile.name='Alex'; S.profile.goal='hypertrophy'; S.profile.days=4;
+  generateProgram();
+  // fabricate 5 weeks of history with progressive overload
+  const start=new Date(Date.now()-35*86400000);
+  const plan={bench:[60,62.5,65,65,67.5],bb_backsquat:[90,92.5,95,97.5,100],deadlift:[110,115,117.5,120,122.5],db_row:[28,30,30,32,32],ohp:[40,40,42.5,42.5,45],latpull:[55,57.5,60,60,62.5]};
+  for(let wk=0;wk<5;wk++){
+    for(let d=0;d<3;d++){
+      const date=new Date(start.getTime()+(wk*7+d*2)*86400000).toISOString().slice(0,10);
+      const day=S.program.week[d];
+      const exs=day.exercises.map(e=>{
+        const base=plan[e.id]?plan[e.id][wk]:(EXBYID[e.id].comp?40:15);
+        const sets=Array.from({length:e.sets},(_,i)=>({w:round(base-(i*0),2.5), r:e.repLo+ (i%2), rpe:7+(i>=e.sets-1?1:0)}));
+        return {id:e.id, sets};
+      });
+      S.logs.push({date,name:day.name,exercises:exs});
+    }
+  }
+  S.logs.sort((a,b)=>b.date<a.date?-1:1);
+  // a couple of readiness check-ins
+  S.readiness=[{date:todayISO(),sleep:4,energy:4,soreness:2,stress:2,score:computeReadiness({sleep:4,energy:4,soreness:2,stress:2}).score,conf:.72,rec:'Proceed as planned.',adjust:{sets:0,rpe:0}}];
+  logAgent('director','Loaded a 5-week demo history so the model has something to learn from.',{conf:.9,inputs:['demo'],mode:'auto',kind:'auto'});
+  save(); updateReadinessPill(); renderFeed(); nav('progress'); toast('Demo data loaded');
+}
+
+/* ================================================================
+   11. BOOT
+   ================================================================ */
+$$('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();nav(a.dataset.view);}));
+window.addEventListener('resize',()=>{ $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000); });
+$('#menuBtn').classList.toggle('hidden', window.innerWidth>1000);
+updateReadinessPill(); renderFeed();
+// A paused session persists in S.activeSession; the dashboard offers a Resume card (see RENDER.dash).
+try{ nav('dash'); }catch(e){ console.error('boot render failed, resetting corrupt state', e); localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); nav('dash'); }
+// expose for inline handlers
+Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
+// PWA: register the service worker so Atlas installs to the home screen and works offline (HTTPS/localhost only).
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+</script>
+</body>
+</html>
