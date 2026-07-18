@@ -105,6 +105,8 @@ button{font-family:inherit; cursor:pointer}
   .topbar .sub{font-size:11px}
   #readinessPill{display:none}
   #feedBtnLabel{display:none}
+  #syncBadge b{display:none}
+  #syncBadge{padding:6px 9px}
   .content{padding:16px 14px calc(92px + env(safe-area-inset-bottom))}
   .g2,.g3{grid-template-columns:1fr}
   .g4{grid-template-columns:1fr 1fr}
@@ -270,6 +272,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
         <div class="sub" id="viewSub">Your autonomous training companion</div>
       </div>
       <div class="grow"></div>
+      <span class="pill" id="syncBadge" title="Cloud sync status — tap to manage" style="display:none;cursor:pointer" onclick="nav('settings')"><span class="dot" style="background:var(--ink3)"></span> <b>Local only</b></span>
       <span class="pill" id="readinessPill" title="Recovery governor estimate"><span class="dot" style="background:var(--good)"></span> Readiness <b id="readVal">—</b></span>
       <button class="btn sm" onclick="toggleDrawer()"><span class="ic">◱</span><span id="feedBtnLabel"> Agent feed </span><span class="tag acc" id="feedCount" style="padding:1px 7px">0</span></button>
     </div>
@@ -312,6 +315,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 <div class="toast" id="toast"></div>
 
+<script src="config.js"></script>
 <script>
 /* ================================================================
    ATLAS — Autonomous Training OS
@@ -460,7 +464,9 @@ function normalizeState(raw){
 }
 let S = load();
 function load(){ try{ const r=localStorage.getItem('atlas.v2'); if(r) return normalizeState(JSON.parse(r)); }catch(e){} return structuredClone(DEFAULT_STATE); }
-function save(){ localStorage.setItem('atlas.v2', JSON.stringify(S)); }
+function save(){ localStorage.setItem('atlas.v2', JSON.stringify(S)); try{ cloudQueuePush(); }catch(e){} }
+// Cloud sync bookkeeping (local-first: cloud is an optional backup layer over localStorage).
+let CLOUD = { client:null, user:null, status:'unconfigured', pushTimer:null, pushing:false };
 
 /* ---------------------------------------------------------------
    3. UTIL
@@ -1200,6 +1206,7 @@ settings(){
       <button class="btn" onclick="doGenerate()">Save & regenerate programme</button>
     </div>
   </div>
+  ${cloudSyncCard()}
   <div class="card" style="margin-top:16px">
     <h3>Data</h3>
     <div class="desc">Everything lives in your browser's localStorage. Health & training data is sensitive — Atlas keeps it on-device by default.</div>
@@ -1448,6 +1455,153 @@ function renderFeed(){ if($('#feed'))$('#feed').innerHTML = S.audit.length? S.au
 function updateReadinessPill(){ const r=S.readiness[0]; $('#readVal').textContent=r?r.score+'%':'—'; if(r)$('#readinessPill').querySelector('.dot').style.background=readColor(r.score); }
 
 /* ================================================================
+   8b. CLOUD SYNC (optional, local-first). Your data goes to YOUR Supabase
+   project under YOUR login, protected by row-level security. Photos NEVER sync.
+   ================================================================ */
+const SUPABASE_SQL = `create table if not exists public.atlas_state (
+  user_id uuid primary key references auth.users on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.atlas_state enable row level security;
+create policy "own select" on public.atlas_state for select using (auth.uid() = user_id);
+create policy "own insert" on public.atlas_state for insert with check (auth.uid() = user_id);
+create policy "own update" on public.atlas_state for update using (auth.uid() = user_id) with check (auth.uid() = user_id);`;
+function cloudSyncCard(){
+  const configured = !!CLOUD.client || !!cloudConfig();
+  let body;
+  if(!configured){
+    body = `
+      <div class="desc">Back up your training history and sync it across devices. It goes to <b>your own</b> free Supabase project, and <b>photos never sync</b> — they stay on this device.</div>
+      <details style="margin:6px 0 12px"><summary style="cursor:pointer;color:var(--accent);font-size:13px">▸ 3-minute setup guide</summary>
+        <ol class="help" style="line-height:1.85;padding-left:18px">
+          <li>Create a free project at <b>supabase.com</b> (New project → name it, pick a region, set a DB password).</li>
+          <li>Open the <b>SQL Editor</b>, paste the snippet below, and press <b>Run</b>.</li>
+          <li>Under <b>Authentication → Sign In / Providers → Email</b>, turn <b>OFF</b> “Confirm email” so sign-up is instant.</li>
+          <li>In <b>Project Settings → API</b>, copy the <b>Project URL</b> and the <b>anon public</b> key and paste them below.</li>
+        </ol>
+        <textarea readonly onclick="this.select()" style="min-height:150px;font-family:var(--mono);font-size:11px">${esc(SUPABASE_SQL)}</textarea>
+      </details>
+      <div class="field"><label class="fld">Supabase Project URL</label><input id="cf_url" placeholder="https://xxxxxxxx.supabase.co"></div>
+      <div class="field"><label class="fld">anon public key</label><input id="cf_key" placeholder="eyJhbGciOi..."></div>
+      <button class="btn primary" onclick="cloudSaveConfig()">Connect</button>`;
+  } else if(!CLOUD.user){
+    body = `
+      <div class="desc">Connected to your Supabase project. Sign in — or create an account — to start syncing. I never see your password; Supabase handles it.</div>
+      <div class="field"><label class="fld">Email</label><input id="cf_email" type="email" placeholder="you@example.com"></div>
+      <div class="field"><label class="fld">Password</label><input id="cf_pw" type="password" placeholder="6+ characters"></div>
+      <div class="row"><button class="btn primary" onclick="cloudAuth('signin')">Sign in</button><button class="btn" onclick="cloudAuth('signup')">Create account</button><button class="btn ghost sm" onclick="cloudDisconnect()">Change project</button></div>`;
+  } else {
+    body = `
+      <div class="row" style="margin-bottom:10px"><span class="pill"><span class="dot" style="background:${SYNC_COLOR[CLOUD.status]}"></span> <b>${SYNC_LABEL[CLOUD.status]}</b></span><span class="dim" style="font-size:12.5px">${esc(CLOUD.user.email||'signed in')}</span></div>
+      <div class="help" style="margin-bottom:12px">Your programme, logs, readiness and settings sync automatically across devices. <b>Photos stay on this device and are never uploaded.</b></div>
+      <div class="row"><button class="btn" onclick="cloudBackupNow()">⭱ Back up now</button><button class="btn" onclick="cloudSignOut()">Sign out</button><button class="btn ghost sm" onclick="cloudDisconnect()">Disconnect</button></div>`;
+  }
+  return `<div class="card" style="margin-top:16px"><h3>☁ Cloud sync <span class="muted" style="font-weight:400;font-size:12px">— optional backup &amp; cross-device</span></h3>${body}</div>`;
+}
+const SYNC_LABEL = {unconfigured:'Local only', signedout:'Sign in to sync', syncing:'Syncing…', synced:'Synced', offline:'Offline', error:'Sync error'};
+const SYNC_COLOR = {unconfigured:'var(--ink3)', signedout:'var(--warn)', syncing:'var(--accent2)', synced:'var(--good)', offline:'var(--ink3)', error:'var(--danger)'};
+function setSyncStatus(s){ CLOUD.status=s; updateSyncBadge(); }
+function updateSyncBadge(){ const b=$('#syncBadge'); if(!b)return; b.querySelector('.dot').style.background=SYNC_COLOR[CLOUD.status]||'var(--ink3)'; const t=b.querySelector('b'); if(t) t.textContent=SYNC_LABEL[CLOUD.status]||'—'; b.style.display = CLOUD.status==='unconfigured' ? 'none':'inline-flex'; }
+function cloudConfig(){
+  const baked = (window.ATLAS_CONFIG && window.ATLAS_CONFIG.SUPABASE_URL) ? window.ATLAS_CONFIG : null;
+  let stored=null; try{ stored=JSON.parse(localStorage.getItem('atlas.cloudcfg')||'null'); }catch(e){}
+  const c = baked || stored;
+  return (c && c.SUPABASE_URL && c.SUPABASE_ANON_KEY) ? c : null;
+}
+// Strip anything that must never leave the device (photos) or is transient, before uploading.
+function sanitizeForSync(state){
+  const c=JSON.parse(JSON.stringify(state));
+  if(c.physique) c.physique.savedPhotos=[];   // photos are on-device only, always
+  delete c.activeSession;                       // don't sync an in-progress session
+  Object.keys(c).forEach(k=>{ if(k[0]==='_') delete c[k]; });
+  return c;
+}
+async function cloudInit(){
+  const cfg=cloudConfig();
+  if(!cfg){ setSyncStatus('unconfigured'); return; }
+  if(!navigator.onLine){ setSyncStatus('offline'); }
+  try{
+    const mod = await import('https://esm.sh/@supabase/supabase-js@2');
+    CLOUD.client = mod.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    CLOUD.client.auth.onAuthStateChange((_e, sess)=>{ CLOUD.user = sess? sess.user : null; onAuthChange(); });
+    const { data:{ session } } = await CLOUD.client.auth.getSession();
+    CLOUD.user = session? session.user : null;
+    await onAuthChange();
+    window.addEventListener('online', ()=>{ if(CLOUD.user) cloudPush(); });
+    document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && CLOUD.user) cloudPull(); });
+  }catch(e){ console.warn('cloud init failed', e); setSyncStatus('error'); }
+}
+async function onAuthChange(){
+  if(CLOUD.user){ setSyncStatus('syncing'); await cloudPull(true); }
+  else { setSyncStatus('signedout'); }
+  if(current==='settings') nav('settings');
+}
+// Pull remote; adopt it if it's newer than what we last synced (last-write-wins). Photos stay local.
+async function cloudPull(initial){
+  if(!CLOUD.user || !CLOUD.client) return;
+  try{
+    const { data, error } = await CLOUD.client.from('atlas_state').select('data,updated_at').eq('user_id', CLOUD.user.id).maybeSingle();
+    if(error) throw error;
+    if(data && data.data){
+      const remoteT=new Date(data.updated_at).getTime();
+      const localT = S._cloudUpdatedAt? new Date(S._cloudUpdatedAt).getTime() : 0;
+      if(remoteT > localT){
+        const localPhotos = (S.physique&&S.physique.savedPhotos)||[];   // preserve device-only photos
+        const merged = normalizeState(data.data);
+        merged.physique.savedPhotos = localPhotos;
+        merged._cloudUpdatedAt = data.updated_at;
+        S = merged; localStorage.setItem('atlas.v2', JSON.stringify(S));
+        updateReadinessPill(); renderFeed(); if(current) nav(current);
+        setSyncStatus('synced');
+      } else if(initial){
+        await cloudPush();   // local is newer or same → push it up
+      } else { setSyncStatus('synced'); }
+    } else if(initial){
+      await cloudPush();     // nothing remote yet → seed it
+    } else { setSyncStatus('synced'); }
+  }catch(e){ console.warn('pull failed', e); setSyncStatus('error'); }
+}
+async function cloudPush(){
+  if(!CLOUD.user || !CLOUD.client || CLOUD.pushing) return;
+  CLOUD.pushing=true; setSyncStatus('syncing');
+  try{
+    const nowISO = new Date().toISOString();
+    const payload = sanitizeForSync(S);
+    const { error } = await CLOUD.client.from('atlas_state').upsert({ user_id:CLOUD.user.id, data:payload, updated_at:nowISO });
+    if(error) throw error;
+    S._cloudUpdatedAt = nowISO; localStorage.setItem('atlas.v2', JSON.stringify(S));  // persist marker without re-queuing
+    setSyncStatus('synced');
+  }catch(e){ console.warn('push failed', e); setSyncStatus('error'); }
+  CLOUD.pushing=false;
+}
+function cloudQueuePush(){ try{ if(!CLOUD || !CLOUD.user) return; clearTimeout(CLOUD.pushTimer); CLOUD.pushTimer=setTimeout(()=>cloudPush(), 1500); }catch(e){} }
+
+/* ----- Cloud sync UI actions ----- */
+async function cloudSaveConfig(){
+  const url=($('#cf_url')?.value||'').trim().replace(/\/$/,''); const key=($('#cf_key')?.value||'').trim();
+  if(!/^https:\/\/.+\.supabase\.co$/.test(url)){ toast('Enter your Supabase URL (https://xxx.supabase.co)','⚠'); return; }
+  if(key.length<30){ toast('Enter your anon (public) key','⚠'); return; }
+  localStorage.setItem('atlas.cloudcfg', JSON.stringify({SUPABASE_URL:url, SUPABASE_ANON_KEY:key}));
+  toast('Connecting…'); await cloudInit(); nav('settings');
+}
+async function cloudAuth(mode){
+  if(!CLOUD.client){ toast('Connect your Supabase project first','⚠'); return; }
+  const email=($('#cf_email')?.value||'').trim(); const pw=($('#cf_pw')?.value||'');
+  if(!email||pw.length<6){ toast('Enter email and a 6+ char password','⚠'); return; }
+  try{
+    const fn = mode==='signup'? CLOUD.client.auth.signUp({email,password:pw}) : CLOUD.client.auth.signInWithPassword({email,password:pw});
+    const { data, error } = await fn;
+    if(error){ toast(error.message,'⚠'); return; }
+    if(mode==='signup' && !data.session){ toast('Account made — check your email to confirm, then sign in','✉'); return; }
+    toast(mode==='signup'?'Account created':'Signed in'); // onAuthStateChange handles sync + re-render
+  }catch(e){ toast('Auth failed: '+e.message,'⚠'); }
+}
+async function cloudSignOut(){ try{ await CLOUD.client.auth.signOut(); }catch(e){} CLOUD.user=null; setSyncStatus('signedout'); nav('settings'); toast('Signed out'); }
+function cloudDisconnect(){ if(!confirm('Disconnect this device from cloud sync? Your local data stays; it just stops syncing.'))return; localStorage.removeItem('atlas.cloudcfg'); CLOUD.client=null; CLOUD.user=null; setSyncStatus('unconfigured'); nav('settings'); toast('Disconnected'); }
+async function cloudBackupNow(){ if(!CLOUD.user){toast('Sign in first');return;} await cloudPush(); toast('Backed up'); }
+
+/* ================================================================
    9. LIVE WORKOUT CONDUCTOR
    ================================================================ */
 let COND=null; // {session, exIdx, timerId, rest}
@@ -1678,11 +1832,12 @@ function loadDemo(){
 $$('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();nav(a.dataset.view);}));
 window.addEventListener('resize',()=>{ $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000); });
 $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000);
-updateReadinessPill(); renderFeed();
+updateReadinessPill(); renderFeed(); updateSyncBadge();
 // A paused session persists in S.activeSession; the dashboard offers a Resume card (see RENDER.dash).
 try{ nav('dash'); }catch(e){ console.error('boot render failed, resetting corrupt state', e); localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); nav('dash'); }
+cloudInit();  // optional cloud sync — no-op unless a Supabase project is configured
 // expose for inline handlers
-Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
+Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
 // PWA: register the service worker so Atlas installs to the home screen and works offline (HTTPS/localhost only).
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
