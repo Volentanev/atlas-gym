@@ -77,6 +77,7 @@ button{font-family:inherit; cursor:pointer}
 .g2{grid-template-columns:repeat(2,1fr)} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
 /* ---------- Mobile bottom tab bar + "More" sheet (shown < 860px) ---------- */
 #menuBtn{display:none}
+body:not(.adv) [data-adv]{display:none!important}   /* power-user items hidden until Advanced is on */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;
   background:rgba(13,20,27,.97);backdrop-filter:blur(14px);border-top:1px solid var(--line);
   padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
@@ -180,6 +181,37 @@ tr:last-child td{border-bottom:none}
 .conf b{font-family:var(--mono)}
 
 /* ---------- Conductor ---------- */
+/* ---------- Onboarding wizard ---------- */
+.onboard{position:fixed;inset:0;z-index:120;display:none;flex-direction:column;background:
+  radial-gradient(900px 600px at 50% -10%, #16303a 0%, transparent 60%),
+  radial-gradient(700px 500px at 50% 110%, #10202a 0%, transparent 55%), var(--bg);overflow:auto}
+.onboard.on{display:flex}
+.ob-wrap{margin:auto;width:min(460px,92vw);padding:28px 20px calc(28px + env(safe-area-inset-bottom));text-align:center}
+.ob-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#04121a;font-weight:800;font-size:30px;margin:0 auto 14px;box-shadow:0 8px 26px rgba(94,200,255,.4)}
+.ob-wrap h2{font-size:23px;margin:0 0 6px;letter-spacing:-.3px}
+.ob-wrap .ob-sub{color:var(--ink2);font-size:14px;margin-bottom:22px;line-height:1.5}
+.ob-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
+.ob-dots i{width:7px;height:7px;border-radius:50%;background:var(--line2)}
+.ob-dots i.on{background:var(--accent);width:22px;border-radius:5px}
+.ob-opts{display:grid;gap:10px;margin-bottom:8px}
+.ob-opt{display:flex;align-items:center;gap:14px;text-align:left;padding:15px 16px;border-radius:14px;border:1px solid var(--line2);background:var(--panel);cursor:pointer;transition:.12s}
+.ob-opt:hover{border-color:var(--accent)}
+.ob-opt.on{border-color:var(--accent);background:rgba(123,224,200,.1)}
+.ob-opt .em{font-size:24px;width:30px;text-align:center}
+.ob-opt b{display:block;font-size:15px} .ob-opt small{color:var(--ink3);font-size:12px}
+.ob-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:6px}
+.ob-chip{padding:11px 18px;border-radius:24px;border:1px solid var(--line2);background:var(--panel);font-size:15px;font-weight:600;cursor:pointer;min-width:52px}
+.ob-chip.on{background:var(--accent);color:#04121a;border-color:var(--accent)}
+.ob-row{display:flex;gap:10px;margin-bottom:12px}
+.ob-field{flex:1;text-align:left}
+.ob-field label{display:block;font-size:12px;color:var(--ink2);margin-bottom:5px}
+.ob-field input{text-align:center;font-size:18px;font-family:var(--mono);padding:12px}
+.ob-actions{display:flex;gap:10px;margin-top:20px}
+.ob-actions .btn{flex:1;justify-content:center;padding:13px}
+.ob-skip{background:none;border:none;color:var(--ink3);font-size:12.5px;margin-top:14px;cursor:pointer;text-decoration:underline}
+.ob-build{display:grid;place-items:center;gap:16px;min-height:200px}
+.ob-spin{width:44px;height:44px;border-radius:50%;border:3px solid var(--line2);border-top-color:var(--accent);animation:obspin 1s linear infinite}
+@keyframes obspin{to{transform:rotate(360deg)}}
 .conductor{position:fixed;inset:0;background:radial-gradient(900px 500px at 50% -5%,#12222b,transparent),var(--bg);z-index:100;display:none;flex-direction:column}
 .conductor.on{display:flex}
 .cond-top{padding:16px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px}
@@ -248,19 +280,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       <div><b>Atlas</b><small>Training OS</small></div>
     </div>
     <nav class="nav" id="nav">
-      <a data-view="dash" class="on"><span class="ic">◎</span> Dashboard</a>
-      <a data-view="mission"><span class="ic">✦</span> Mission Mode</a>
-      <a data-view="program"><span class="ic">▤</span> Programme</a>
+      <a data-view="dash" class="on"><span class="ic">◎</span> Home</a>
+      <a data-view="program"><span class="ic">▤</span> My Plan</a>
       <a data-view="progress"><span class="ic">📈</span> Progress</a>
-      <a data-view="physique"><span class="ic">📸</span> Physique Check</a>
-      <a data-view="recovery"><span class="ic">♥</span> Recovery</a>
-      <a data-view="twin"><span class="ic">⧉</span> Digital Twin</a>
-      <a data-view="coaches"><span class="ic">⚑</span> Escalation</a>
-      <a data-view="agents"><span class="ic">⚙</span> Agents &amp; Policy</a>
+      <a data-view="physique"><span class="ic">📸</span> Physique</a>
+      <a data-view="recovery"><span class="ic">♥</span> Check-in</a>
+      <a data-view="mission" data-adv="1"><span class="ic">✦</span> Quick session</a>
+      <a data-view="twin" data-adv="1"><span class="ic">⧉</span> Digital Twin</a>
+      <a data-view="coaches" data-adv="1"><span class="ic">⚑</span> Escalation</a>
+      <a data-view="agents" data-adv="1"><span class="ic">⚙</span> Agents &amp; Policy</a>
       <a data-view="settings"><span class="ic">☰</span> Settings</a>
     </nav>
     <div class="spacer"></div>
-    <div class="foot">Deterministic engine · confidence-aware · offline. Data stays on this device.</div>
+    <div class="foot"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--ink2)"><input type="checkbox" id="advToggle" onchange="toggleAdvanced(this.checked)" style="width:auto"> Advanced mode</label><div style="margin-top:8px">Private · offline. Data stays on your device.</div></div>
   </aside>
 
   <!-- MAIN -->
@@ -274,7 +306,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       <div class="grow"></div>
       <span class="pill" id="syncBadge" title="Cloud sync status — tap to manage" style="display:none;cursor:pointer" onclick="nav('settings')"><span class="dot" style="background:var(--ink3)"></span> <b>Local only</b></span>
       <span class="pill" id="readinessPill" title="Recovery governor estimate"><span class="dot" style="background:var(--good)"></span> Readiness <b id="readVal">—</b></span>
-      <button class="btn sm" onclick="toggleDrawer()"><span class="ic">◱</span><span id="feedBtnLabel"> Agent feed </span><span class="tag acc" id="feedCount" style="padding:1px 7px">0</span></button>
+      <button class="btn sm" data-adv="1" onclick="toggleDrawer()"><span class="ic">◱</span><span id="feedBtnLabel"> Agent feed </span><span class="tag acc" id="feedCount" style="padding:1px 7px">0</span></button>
     </div>
     <div class="content" id="content"><!-- rendered --></div>
   </div>
@@ -283,20 +315,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <!-- MOBILE BOTTOM NAV -->
 <nav class="tabbar" id="tabbar">
   <button class="tb on" data-view="dash" onclick="nav('dash')"><span class="ic">◎</span>Home</button>
-  <button class="tb" data-view="mission" onclick="nav('mission')"><span class="ic">✦</span>Mission</button>
   <button class="tb" data-view="program" onclick="nav('program')"><span class="ic">▤</span>Plan</button>
-  <button class="tb" data-view="recovery" onclick="nav('recovery')"><span class="ic">♥</span>Recovery</button>
+  <button class="tb" data-view="progress" onclick="nav('progress')"><span class="ic">📈</span>Progress</button>
+  <button class="tb" data-view="physique" onclick="nav('physique')"><span class="ic">📸</span>Physique</button>
   <button class="tb" data-view="more" onclick="openMore()"><span class="ic">⋯</span>More</button>
 </nav>
 <div class="more-backdrop" id="moreBackdrop" onclick="closeMore()"></div>
 <div class="moresheet" id="moresheet">
   <div class="grab"></div>
-  <a onclick="nav('progress')"><span class="ic">📈</span> Progress</a>
-  <a onclick="nav('physique')"><span class="ic">📸</span> Physique Check</a>
-  <a onclick="nav('twin')"><span class="ic">⧉</span> Digital Twin</a>
-  <a onclick="nav('coaches')"><span class="ic">⚑</span> Human Escalation</a>
-  <a onclick="nav('agents')"><span class="ic">⚙</span> Agents &amp; Policy</a>
+  <a onclick="nav('recovery')"><span class="ic">♥</span> Daily check-in</a>
+  <a data-adv="1" onclick="nav('mission')"><span class="ic">✦</span> Quick session</a>
+  <a data-adv="1" onclick="nav('twin')"><span class="ic">⧉</span> Digital Twin</a>
+  <a data-adv="1" onclick="nav('coaches')"><span class="ic">⚑</span> Human Escalation</a>
+  <a data-adv="1" onclick="nav('agents')"><span class="ic">⚙</span> Agents &amp; Policy</a>
   <a onclick="nav('settings')"><span class="ic">☰</span> Settings</a>
+  <label style="display:flex;align-items:center;gap:12px;padding:15px 12px;font-size:15px;cursor:pointer"><input type="checkbox" id="advToggleM" onchange="toggleAdvanced(this.checked)" style="width:auto"> <span class="ic" style="width:24px;text-align:center;color:var(--accent);font-size:18px">⚑</span> Advanced mode</label>
 </div>
 
 <!-- AGENT FEED DRAWER -->
@@ -312,6 +345,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 
 <!-- LIVE CONDUCTOR OVERLAY -->
 <div class="conductor" id="conductor"></div>
+
+<!-- FIRST-RUN ONBOARDING OVERLAY -->
+<div class="onboard" id="onboard"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -429,7 +465,10 @@ const SLOT = {
    --------------------------------------------------------------- */
 const DEFAULT_STATE = {
   v:2,
+  onboarded:false,        // false until the first-run wizard is completed
+  advanced:false,         // power-user features (agents, twin, escalation, mission) hidden until unlocked
   profile:{name:'Athlete',goal:'hypertrophy',experience:'intermediate',days:4,sessionMin:60,
+    gender:'', age:null, heightCm:null, weightKg:null,   // collected in onboarding; used for context & physique read
     equipment:['barbell','dumbbell','machine','cable','bodyweight'],
     restrictions:[], // e.g. ['shoulder']
     gymBusyHours:[17,18,19]},
@@ -764,26 +803,70 @@ function seedRatingsFromVolume(){
   PHYS_GROUPS.forEach(g=>{ const v=vol[g.key]||0; out[g.key]= S.logs.length? clamp(Math.round(1+(v/max)*4),1,5) : 3; });
   return out;
 }
-function analyzePhysique(ratings){
+// Fast on-device photo read: estimate shoulder:waist proportion + left/right symmetry from the silhouette.
+// No ML model (a big pose model was too heavy/slow) — pure canvas. Rough by nature, so confidence stays modest.
+function estimateProportions(dataUrl){
+  return new Promise(resolve=>{
+    if(!dataUrl){ resolve({ok:false}); return; }
+    const img=new Image();
+    img.onload=()=>{
+      try{
+        const W=200, scale=W/img.width, H=Math.max(1,Math.round(img.height*scale));
+        const c=document.createElement('canvas'); c.width=W; c.height=H;
+        const ctx=c.getContext('2d'); ctx.drawImage(img,0,0,W,H);
+        const d=ctx.getImageData(0,0,W,H).data;
+        const px=(x,y)=>{ const i=(y*W+x)*4; return [d[i],d[i+1],d[i+2]]; };
+        const corners=[px(1,1),px(W-2,1),px(1,H-2),px(W-2,H-2)];
+        const bg=[0,1,2].map(k=>corners.reduce((a,p)=>a+p[k],0)/corners.length);
+        const isFg=(x,y)=>{ const p=px(x,y); return (Math.abs(p[0]-bg[0])+Math.abs(p[1]-bg[1])+Math.abs(p[2]-bg[2]))>70; };
+        const rows=[];
+        for(let y=0;y<H;y++){ let minx=-1,maxx=-1,count=0,lc=0,rc=0; for(let x=0;x<W;x++){ if(isFg(x,y)){ if(minx<0)minx=x; maxx=x; count++; if(x<W/2)lc++; else rc++; } } rows.push({y,w:minx<0?0:maxx-minx,count,lc,rc}); }
+        const body=rows.filter(r=>r.count>W*0.06);
+        if(body.length < H*0.35){ resolve({ok:false, reason:'couldn\'t isolate your outline (try a plainer background)'}); return; }
+        const top=body[0].y, bot=body[body.length-1].y, bh=bot-top||1;
+        const wAt=f=>{ const y=clamp(Math.round(top+bh*f),0,H-1); return (rows[y]||{w:0}).w; };
+        const shoulderW=Math.max(wAt(0.16),wAt(0.20),wAt(0.24));
+        const waistW=Math.min(wAt(0.40),wAt(0.45),wAt(0.50))||1;
+        const ratio=shoulderW/waistW;
+        const upper=body.filter(r=>r.y<top+bh*0.55);
+        const L=upper.reduce((a,r)=>a+r.lc,0), R=upper.reduce((a,r)=>a+r.rc,0);
+        const asym=(L+R)>0?Math.abs(L-R)/(L+R):0;
+        const conf=clamp(0.28 + (body.length/H)*0.22, 0.22, 0.5);
+        resolve({ok: ratio>0.7 && ratio<3.2, shoulderWaist:+ratio.toFixed(2), asym:+asym.toFixed(2), conf});
+      }catch(e){ resolve({ok:false}); }
+    };
+    img.onerror=()=>resolve({ok:false});
+    img.src=dataUrl;
+  });
+}
+// Auto weak-point analysis: fuses the photo read (proportions/symmetry) + your logged training volume + goal.
+// Works with no manual input; manual ratings (if given) refine it. Photos are read on-device only.
+function analyzePhysique(ratings, prop){
   const vol=recentVolume(7);
   const stalled=new Set(topLifts().filter(l=>l.series.length>=3 && l.series.at(-1).v<=l.series[0].v).flatMap(l=>EXBYID[l.id].pri));
+  const wantWidth = prop && prop.ok && prop.shoulderWaist < 1.45;   // straight-up-and-down frame → prioritise width
+  const asymFlag  = prop && prop.ok && prop.asym > 0.10;
+  const goal=S.profile.goal;
   const rows=PHYS_GROUPS.map(g=>{
     const rating=clamp(ratings?.[g.key]||3,1,5);
     const v=vol[g.key]||0;
-    const visual=(5-rating)/4;                         // 0 (great) .. 1 (weak) from self-assessment
-    const volDeficit=1-clamp(v/PHYS_VOL_TARGET,0,1);    // 0 (enough sets) .. 1 (none)
+    const visual=(5-rating)/4;
+    const volDeficit=1-clamp(v/PHYS_VOL_TARGET,0,1);
     const lag=stalled.has(g.key)?1:0;
-    const score= visual*0.5 + volDeficit*0.35 + lag*0.15;
-    const reasons=[];
-    if(rating<=2) reasons.push('you rated it under-developed'); else if(rating===3) reasons.push('you rated it average');
-    if(v<6) reasons.push(`only ${Math.round(v)} set${Math.round(v)===1?'':'s'} trained in the last 7 days`);
+    let structural=0; const reasons=[];
+    if(wantWidth && (g.key==='sideDelts'||g.key==='lats')){ structural=0.55; reasons.push('your photo reads fairly straight up-and-down — building this adds width & shape'); }
+    if(goal==='fatloss' && g.key==='core') structural=Math.max(structural,0.2);
+    if(rating<=2) reasons.push('looks under-developed'); else if(rating===3 && !structural) reasons.push('looks average');
+    if(v<6) reasons.push(`only ${Math.round(v)} set${Math.round(v)===1?'':'s'} trained this week`);
     if(lag) reasons.push('a lift that trains it has stalled');
+    const score= visual*0.42 + volDeficit*0.33 + lag*0.12 + structural*0.28;
     return {key:g.key, label:g.label, rating, vol:v, score, reasons};
   }).sort((a,b)=>b.score-a.score);
-  const weakPoints=(rows.filter(r=>r.score>=0.4).slice(0,4)) ; const pool=weakPoints.length?weakPoints:rows.slice(0,2);
-  // Confidence is deliberately modest — a photo + self-report are noisy. More logged history nudges it up.
-  const conf=clamp(0.42 + (S.logs.length>=6?0.14:S.logs.length>=3?0.08:0), 0.35, 0.68);
-  return {weakPoints:pool, all:rows, conf, ts:todayISO()};
+  const weakPoints=rows.filter(r=>r.score>=0.4).slice(0,4);
+  const pool=weakPoints.length?weakPoints:rows.slice(0,3);
+  let conf=0.40 + (S.logs.length>=6?0.12:S.logs.length>=3?0.07:0) + (prop&&prop.ok?0.06:0);
+  conf=clamp(conf,0.30,0.66);
+  return {weakPoints:pool, all:rows, conf, prop:prop||null, asymFlag, ts:todayISO()};
 }
 function buildSpecialization(weakPoints){
   return weakPoints.map(w=>{
@@ -900,22 +983,22 @@ function habitCheck(){
    7. VIEWS / RENDER
    ================================================================ */
 const VIEWS={
-  dash:{title:'Dashboard',sub:'Your autonomous training companion'},
-  mission:{title:'Mission Mode',sub:'State your situation — I build the session'},
-  program:{title:'Programme',sub:'Autonomously planned & continuously reconciled'},
-  progress:{title:'Progress',sub:'What the performance model has learned'},
-  physique:{title:'Physique Check',sub:'On-device weak-point analysis — private, honest about uncertainty'},
-  recovery:{title:'Recovery',sub:'Fatigue governor — expresses uncertainty, not verdicts'},
+  dash:{title:'Home',sub:'Your training, made simple'},
+  mission:{title:'Quick session',sub:'Short on time? Describe your situation and I build it'},
+  program:{title:'My Plan',sub:'Your weekly workout plan'},
+  progress:{title:'Progress',sub:'How you\'re doing over time'},
+  physique:{title:'Physique',sub:'Snap a photo — I find what to prioritise'},
+  recovery:{title:'Daily check-in',sub:'How recovered are you today?'},
   twin:{title:'Digital Twin',sub:'Simulate scenarios before you commit'},
   coaches:{title:'Human Escalation',sub:'Hand off to a professional with full context'},
   agents:{title:'Agents & Policy',sub:'What may act automatically — and what asks first'},
   settings:{title:'Settings',sub:'Profile, equipment, restrictions'},
 };
 let current='dash';
-const TAB_MORE_VIEWS=['progress','physique','twin','coaches','agents','settings']; // live in the mobile "More" sheet
+const TAB_PRIMARY=['dash','program','progress','physique'];   // the 4 bottom tabs; everything else lives under "More"
 function nav(v){
   current=v; $$('#nav a').forEach(a=>a.classList.toggle('on',a.dataset.view===v));
-  $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view===v || (b.dataset.view==='more'&&TAB_MORE_VIEWS.includes(v))));
+  $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view===v || (b.dataset.view==='more'&&!TAB_PRIMARY.includes(v))));
   $('#viewTitle').textContent=VIEWS[v].title; $('#viewSub').textContent=VIEWS[v].sub;
   $('#content').innerHTML = RENDER[v]();
   bindView(v);
@@ -924,6 +1007,14 @@ function nav(v){
 }
 function openMore(){ $('#moresheet').classList.add('open'); $('#moreBackdrop').classList.add('open'); $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view==='more')); }
 function closeMore(){ $('#moresheet').classList.remove('open'); $('#moreBackdrop').classList.remove('open'); }
+function toggleAdvanced(on){
+  S.advanced=!!on; save();
+  document.body.classList.toggle('adv', S.advanced);
+  const a=$('#advToggle'), m=$('#advToggleM'); if(a)a.checked=S.advanced; if(m)m.checked=S.advanced;
+  toast(S.advanced?'Advanced mode on':'Advanced mode off');
+  if(!S.advanced && ['mission','twin','coaches','agents'].includes(current)) nav('dash');  // leave a now-hidden view
+}
+function applyAdvancedUI(){ document.body.classList.toggle('adv', !!S.advanced); const a=$('#advToggle'), m=$('#advToggleM'); if(a)a.checked=!!S.advanced; if(m)m.checked=!!S.advanced; }
 
 const RENDER={
 /* ---------- DASHBOARD ---------- */
@@ -934,49 +1025,58 @@ dash(){
   const todayDay = S.program? S.program.week[S.weekIndex % S.program.week.length] : null;
   const today = todayDay ? {name:todayDay.name, exercises:applyWeek(todayDay.exercises)} : null; // week-adjusted (deload/progression) view
   const vol = S.program? plannedVolume(S.program.week):null;
+  const mins = today? Math.max(20, today.exercises.length*8) : 0;
+  const deloadWk = S.program && (S.weekIndex+1)%S.program.deloadEvery===0;
   return `
   ${!S.program?`<div class="card" style="border-color:var(--accent)">
-    <div class="between"><div><h3>Welcome to Atlas</h3><div class="desc">No programme yet. The Programme Director can build one from your goal, or jump straight into Mission Mode.</div></div></div>
-    <div class="row"><button class="btn primary" onclick="doGenerate()">▤ Build my programme</button><button class="btn" onclick="nav('mission')">✦ Try Mission Mode</button><button class="btn ghost" onclick="loadDemo()">Load demo data</button></div>
+    <h3>Let's get you set up</h3>
+    <div class="desc">Answer a few quick questions and I'll build a plan made for you.</div>
+    <button class="btn primary" onclick="startOnboarding()">Set up my plan →</button>
   </div>`:''}
-
-  <div class="grid g4" style="margin-bottom:16px">
-    <div class="card"><div class="muted" style="font-size:12px">Readiness</div><div class="kpi" style="color:${read?readColor(read.score):'var(--ink3)'}">${read?read.score:'—'}${read?'<span style="font-size:14px">%</span>':''}</div><div class="muted" style="font-size:11px">${read?`confidence: ${confBand(read.conf)} · self-report`:'no check-in yet'}</div></div>
-    <div class="card"><div class="muted" style="font-size:12px">4-wk adherence</div><div class="kpi">${adh.pct}<span style="font-size:14px">%</span></div><div class="muted" style="font-size:11px">${adh.done}/${adh.target} sessions</div></div>
-    <div class="card"><div class="muted" style="font-size:12px">Logged sessions</div><div class="kpi">${S.logs.length}</div><div class="muted" style="font-size:11px">total history</div></div>
-    <div class="card"><div class="muted" style="font-size:12px">Est. weekly sets</div><div class="kpi">${vol?Math.round(Object.values(vol).reduce((a,b)=>a+b,0)):'—'}</div><div class="muted" style="font-size:11px">across all muscles</div></div>
-  </div>
 
   ${S.activeSession?`<div class="card" style="border-color:var(--accent2);margin-bottom:16px">
-    <div class="between"><div class="row"><span class="mode-badge mode-auto">Conductor</span><b>Session in progress — ${esc(S.activeSession.name)}</b></div>
-    <div class="row"><button class="btn primary sm" onclick="resumeSession()">▶ Resume</button><button class="btn ghost sm" onclick="discardActive()">Discard</button></div></div>
+    <div class="between"><b>▶ Workout in progress — ${esc(S.activeSession.name)}</b>
+    <div class="row"><button class="btn primary sm" onclick="resumeSession()">Resume</button><button class="btn ghost sm" onclick="discardActive()">Discard</button></div></div>
   </div>`:''}
+
+  <!-- HERO: today's workout -->
+  ${today?`<div class="card" style="background:linear-gradient(135deg,rgba(123,224,200,.10),rgba(94,200,255,.05));margin-bottom:16px">
+    <div class="muted" style="font-size:11.5px;text-transform:uppercase;letter-spacing:.6px">Today's workout${deloadWk?' · easy week':''}</div>
+    <h2 style="margin:4px 0 2px;font-size:22px">${esc(today.name)}</h2>
+    <div class="dim" style="font-size:13px;margin-bottom:12px">${today.exercises.length} exercises · about ${mins} min</div>
+    ${today.exercises.slice(0,6).map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)}</span><span class="m">${e.sets}×${e.repLo}-${e.repHi}</span></div>`:''}).join('')}
+    <button class="btn primary block" style="padding:14px;font-size:15px;margin-top:14px" onclick="startSession('program')">▶ Start workout</button>
+  </div>`:`<div class="card" style="margin-bottom:16px"><div class="empty"><div class="big">🌙</div>Rest day — nothing scheduled today.<br><button class="btn sm" onclick="nav('program')" style="margin-top:10px">See my plan</button></div></div>`}
 
   ${hb.risk?`<div class="card" style="border-color:var(--warn);margin-bottom:16px">
-    <div class="row" style="margin-bottom:8px"><span class="mode-badge mode-suggest">Habit-Rescue</span><b>Session at risk</b></div>
-    <div class="desc" style="margin-bottom:12px">${esc(hb.msg)} <span class="muted">Instead of a nagging reminder, pick a proportional option:</span></div>
-    <div class="row">${hb.options.map((o,i)=>`<button class="btn ${i===0?'primary':''}" onclick="rescue(${i})">${esc(o)}</button>`).join('')}</div>
+    <b>⏰ Running late today?</b>
+    <div class="desc" style="margin:6px 0 12px">${esc(hb.msg)}</div>
+    <div class="row">${hb.options.map((o,i)=>`<button class="btn ${i===0?'primary':''} sm" onclick="rescue(${i})">${esc(o)}</button>`).join('')}</div>
   </div>`:''}
 
-  <div class="grid g2">
-    <div class="card">
-      <div class="between"><h3>Today · ${today?esc(today.name):'Rest / open'}</h3>${today?`<button class="btn primary sm" onclick="startSession('program')">▶ Start</button>`:''}</div>
-      <div class="desc">Week ${S.weekIndex+1}${S.program&&(S.weekIndex+1)%S.program.deloadEvery===0?' · <span class="tag warn">deload</span>':''}</div>
-      ${today? today.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)}</span><span class="m">${e.sets}×${e.repLo}-${e.repHi} · RPE ${e.rpe}</span></div>`:''}).join('') : `<div class="empty"><div class="big">◎</div>Nothing scheduled. <a href="#" onclick="nav('mission');return false" style="color:var(--accent)">Run a Mission session?</a></div>`}
-    </div>
-
-    <div class="card">
-      <h3>Weekly balance <span class="muted" style="font-weight:400;font-size:12px">— planned volume vs recent</span></h3>
-      <div class="desc">The Director keeps movement patterns balanced. Bars show planned weekly sets per muscle.</div>
-      ${vol? volumeChart(vol):'<div class="muted">Build a programme to see balance.</div>'}
-    </div>
+  <!-- quick actions -->
+  <div class="row" style="margin-bottom:16px">
+    <button class="btn" onclick="nav('recovery')">♥ Daily check-in</button>
+    <button class="btn" onclick="nav('physique')">📸 Physique scan</button>
+    <button class="btn" onclick="nav('progress')">📈 Progress</button>
   </div>
 
+  <!-- plain-language stats -->
+  <div class="grid g3">
+    <div class="card"><div class="muted" style="font-size:12px">Recovery</div><div class="kpi" style="color:${read?readColor(read.score):'var(--ink3)'}">${read?read.score:'—'}${read?'<span style="font-size:14px">%</span>':''}</div><div class="muted" style="font-size:11px">${read?'from your check-in':'tap Daily check-in'}</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">Consistency</div><div class="kpi">${adh.pct}<span style="font-size:14px">%</span></div><div class="muted" style="font-size:11px">last 4 weeks</div></div>
+    <div class="card"><div class="muted" style="font-size:12px">Workouts done</div><div class="kpi">${S.logs.length}</div><div class="muted" style="font-size:11px">all time</div></div>
+  </div>
+
+  ${S.advanced?`
   <div class="card" style="margin-top:16px">
-    <div class="between"><h3>Recent agent decisions</h3><button class="btn ghost sm" onclick="toggleDrawer()">Open full feed →</button></div>
-    <div class="desc">Every autonomous action is logged with its confidence and the inputs it used.</div>
+    <h3>Weekly balance <span class="muted" style="font-weight:400;font-size:12px">— planned sets per muscle</span></h3>
+    ${vol? volumeChart(vol):'<div class="muted">Build a plan to see balance.</div>'}
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="between"><h3>Recent agent decisions</h3><button class="btn ghost sm" onclick="toggleDrawer()">Full feed →</button></div>
     ${S.audit.slice(0,4).map(feedRow).join('')||'<div class="muted">No activity yet.</div>'}
-  </div>`;
+  </div>`:''}`;
 },
 
 /* ---------- MISSION MODE ---------- */
@@ -1054,44 +1154,40 @@ physique(){
   const keepOn = P.savedPhotos.length>0;
   if(!P.consent){
     return `<div class="card" style="border-color:var(--accent)">
-      <h3>📸 Physique Check — how it works &amp; your privacy</h3>
-      <div class="desc" style="margin-bottom:12px">A single photo can't truly diagnose weak muscles, so Atlas doesn't pretend to. Instead it fuses a quick <b>photo-guided self-assessment</b> with your <b>logged training volume</b> and <b>stalled lifts</b> to flag likely weak points — always with a confidence band, never a verdict — then builds a plan to bring them up.</div>
+      <h3>📸 Physique scan — quick &amp; private</h3>
+      <div class="desc" style="margin-bottom:12px">Snap a photo and I'll read your shape and figure out which muscles to prioritise — then update your plan for you.</div>
       <div class="rationale" style="margin-bottom:14px"><b>Your privacy, built in:</b>
         <ul style="margin:8px 0 0;padding-left:18px;line-height:1.75">
-          <li>Your photo is processed <b>entirely on this device</b> and is <b>never uploaded</b> anywhere.</li>
-          <li><b>No face recognition</b>, ever. It is <b>never used to train any model</b>.</li>
-          <li>Photos are <b>not saved</b> unless you tick “keep on this device”, and you can <b>delete everything</b> in one tap.</li>
-          <li>This is fitness guidance, <b>not a medical or body-composition diagnosis</b>.</li>
+          <li>Your photo is read <b>entirely on this phone</b> and is <b>never uploaded</b>.</li>
+          <li><b>No face recognition.</b> Never used to train anything.</li>
+          <li>Not saved unless you choose to. <b>Delete everything in one tap.</b></li>
+          <li>It's a smart estimate for training — <b>not a medical scan</b>.</li>
         </ul>
       </div>
-      <button class="btn primary" onclick="giveConsent()">I understand — continue</button>
+      <button class="btn primary" onclick="giveConsent()">Got it — let's go</button>
     </div>`;
   }
   return `
   <div class="card" style="margin-bottom:16px">
-    <div class="between"><h3>📸 On-device physique scan</h3><span class="tag good">private · on-device</span></div>
-    <div class="desc">Add a photo to rate against (optional but it helps), assess each muscle group, then Atlas ranks your weak points and builds a plan. Nothing leaves this device.</div>
+    <div class="between"><h3>📸 Physique scan</h3><span class="tag good">private · on-device</span></div>
+    <div class="desc">For the best read: a front-on standing photo, relaxed arms, plain background. (You can skip the photo and I'll use your training data.)</div>
     <div class="row" style="margin:6px 0 12px">
-      <button class="btn" onclick="document.getElementById('phys_file').click()">＋ Add photo</button>
+      <button class="btn" onclick="document.getElementById('phys_file').click()">📷 ${photos.length?'Change photo':'Add photo'}</button>
       <label class="chip ${keepOn?'on':''}" style="user-select:none"><input type="checkbox" id="phys_keep" ${keepOn?'checked':''} onchange="toggleSavePhotos(this)" style="width:auto;margin-right:6px;vertical-align:-2px"> Keep on this device</label>
-      ${(photos.length||a)?`<button class="btn ghost sm danger" onclick="deletePhysiqueData()">🗑 Delete photos &amp; data</button>`:''}
+      ${(photos.length||a)?`<button class="btn ghost sm danger" onclick="deletePhysiqueData()">🗑 Delete</button>`:''}
       <input type="file" id="phys_file" accept="image/*" class="hidden" onchange="handlePhoto(event)">
     </div>
-    ${photos.length?`<div class="row" style="gap:10px">${photos.map((p,i)=>`<div style="position:relative"><img src="${p.url}" alt="physique reference" style="width:96px;height:128px;object-fit:cover;border-radius:10px;border:1px solid var(--line2)"><span class="tag" style="position:absolute;left:4px;bottom:4px;padding:1px 6px">${esc(p.label)}</span><button class="btn ghost sm" onclick="removePhoto(${i})" style="position:absolute;top:2px;right:2px;padding:2px 7px;background:rgba(0,0,0,.55)">✕</button></div>`).join('')}</div>`:`<div class="help">No photo added — you can still assess from the mirror. On a phone, “Add photo” opens your camera.</div>`}
-  </div>
-
-  <div class="card" style="margin-bottom:16px">
-    <h3>Rate each muscle group <span class="muted" style="font-weight:400;font-size:12px">— seeded from your history; adjust to what you see (1 = lagging, 5 = strong point)</span></h3>
-    <div style="margin-top:10px">
+    ${photos.length?`<div class="row" style="gap:10px;margin-bottom:12px">${photos.map((p,i)=>`<div style="position:relative"><img src="${p.url}" alt="physique reference" style="width:96px;height:128px;object-fit:cover;border-radius:10px;border:1px solid var(--line2)"><button class="btn ghost sm" onclick="removePhoto(${i})" style="position:absolute;top:2px;right:2px;padding:2px 7px;background:rgba(0,0,0,.55)">✕</button></div>`).join('')}</div>`:''}
+    <button class="btn primary block" id="analyzeBtn" style="padding:14px;font-size:15px" onclick="runPhysique()">✨ Analyse my physique</button>
+    <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--accent);font-size:13px">▸ Fine-tune what you see (optional)</summary>
+      <div class="help" style="margin:6px 0 10px">Adjust any muscle you think looks ahead or behind (1 = lagging, 5 = strong point), then analyse again.</div>
       ${PHYS_GROUPS.map(g=>`
         <div style="display:grid;grid-template-columns:132px 1fr 22px;gap:10px;align-items:center;margin-bottom:9px">
           <span style="font-size:13px">${g.label}</span>
           <input type="range" min="1" max="5" value="${ratings[g.key]||3}" id="phys_${g.key}" oninput="document.getElementById('phlbl_${g.key}').textContent=this.value">
           <span class="muted" id="phlbl_${g.key}" style="font-family:var(--mono);text-align:right">${ratings[g.key]||3}</span>
         </div>`).join('')}
-    </div>
-    <button class="btn primary block" style="margin-top:12px" onclick="runPhysique()">Analyse my physique →</button>
-    <div class="help">//CV: an on-device pose model could later add objective symmetry &amp; proportion measurement — same on-device, no-upload contract.</div>
+    </details>
   </div>
 
   <div id="physOut">${a?physiqueResult(a):''}</div>`;
@@ -1392,40 +1488,45 @@ function handlePhoto(e){ const f=e.target.files&&e.target.files[0]; e.target.val
 function removePhoto(i){ PHY.photos.splice(i,1); if(S.physique.savedPhotos.length){ S.physique.savedPhotos=PHY.photos.map(p=>({...p})); save(); } nav('physique'); }
 function toggleSavePhotos(el){ if(el.checked){ S.physique.savedPhotos=PHY.photos.map(p=>({...p})); toast('Photos will stay on this device'); } else { S.physique.savedPhotos=[]; toast('Photos won\'t be saved'); } save(); }
 function syncRatings(){ if($('#phys_'+PHYS_GROUPS[0].key)){ const r={}; PHYS_GROUPS.forEach(g=>{ const el=$('#phys_'+g.key); if(el) r[g.key]=+el.value; }); S.physique.ratings=r; } }
-function runPhysique(){
+async function runPhysique(){
   syncRatings();
-  const a=analyzePhysique(S.physique.ratings||seedRatingsFromVolume());
+  const btn=$('#analyzeBtn'); if(btn){ btn.disabled=true; btn.innerHTML='Analysing your photo…'; }
+  const photo = PHY.photos[0]?PHY.photos[0].url:null;
+  const prop = photo? await estimateProportions(photo) : {ok:false};
+  const a=analyzePhysique(S.physique.ratings||seedRatingsFromVolume(), prop);
   S.physique.lastAnalysis=a; S.physique.updatedISO=todayISO(); save();
-  logAgent('physique',`Physique scan: flagged ${a.weakPoints.map(w=>w.label).join(', ')||'no clear weak points'} (confidence ${confBand(a.conf)}). Photo processed on-device only.`,{conf:a.conf,inputs:['self-assessment','7-day volume','stalled lifts'],mode:S.autonomy.physique,kind:S.autonomy.physique==='off'?'block':'suggest'});
+  logAgent('physique',`Physique scan: prioritise ${a.weakPoints.map(w=>w.label).join(', ')||'balanced'} (${confBand(a.conf)} confidence)${prop.ok?', photo proportions read on-device':''}.`,{conf:a.conf,inputs:['photo proportions','training volume','goal'],mode:S.autonomy.physique,kind:S.autonomy.physique==='off'?'block':'suggest'});
   nav('physique'); setTimeout(()=>{const o=$('#physOut'); if(o)o.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
 }
 function applyPhysiquePlan(){
   const a=S.physique.lastAnalysis; if(!a){toast('Run a scan first');return;}
-  if(!S.program){ if(confirm('You have no programme yet. Build one now, then add the specialization?')){ generateProgram(); } else return; }
+  if(!S.program){ if(confirm('You have no plan yet. Build one now, then add these priorities?')){ generateProgram(); } else return; }
   const spec=buildSpecialization(a.weakPoints); const res=applySpecialization(spec);
-  if(res.added){ logAgent('physique',`Added a specialization block (${res.added} exercises) for ${res.muscles.join(', ')} to your programme.`,{conf:.7,inputs:['weak points','equipment','programme'],mode:'auto',kind:'auto'}); toast(`Added ${res.added} exercises to your plan`); nav('program'); }
-  else { toast('Those exercises are already in your plan','✓'); }
+  if(res.added){ logAgent('physique',`Updated your plan: added ${res.added} exercises for ${res.muscles.join(', ')}.`,{conf:.7,inputs:['weak points','equipment','plan'],mode:'auto',kind:'auto'}); toast(`Plan updated — added ${res.added} exercises 💪`); nav('program'); }
+  else { toast('Your plan already covers these ✓'); }
 }
 function deletePhysiqueData(){ if(!confirm('Delete all physique photos and analysis from this device? This cannot be undone.'))return; PHY.photos=[]; S.physique={consent:true, ratings:null, savedPhotos:[], lastAnalysis:null, updatedISO:null}; save(); logAgent('physique','Physique photos & analysis deleted from this device at your request.',{conf:1,inputs:['user'],mode:S.autonomy.physique,kind:'suggest'}); nav('physique'); toast('Physique data deleted'); }
 function physiqueResult(a){
   const spec=buildSpecialization(a.weakPoints);
   const maxScore=Math.max(0.4,...a.all.map(r=>r.score));
+  const prop=a.prop;
   return `
   <div class="card" style="margin-bottom:16px;border-color:var(--accent)">
-    <div class="between"><h3>Weak points <span class="muted" style="font-weight:400;font-size:12px">— ranked</span></h3><span class="tag ${a.conf>=.6?'acc':'warn'}">confidence ${Math.round(a.conf*100)}% · ${confBand(a.conf)}</span></div>
-    <div class="help" style="margin-bottom:10px">⚠ Directional guidance from a photo + self-report + your logs — <b>not a diagnosis</b>. Treat it as a hypothesis to test over the next few weeks.</div>
+    <div class="between"><h3>What to prioritise</h3><span class="tag ${a.conf>=.6?'acc':'warn'}">${Math.round(a.conf*100)}% sure</span></div>
+    ${prop&&prop.ok?`<div class="rationale" style="margin-bottom:10px">📸 <b>Photo read:</b> shoulder-to-waist ≈ <b>${prop.shoulderWaist}</b>${prop.shoulderWaist<1.45?' — a fairly straight frame, so widening shoulders & back adds the most shape.':' — you already carry a good V-taper.'}${a.asymFlag?' Slight left/right imbalance too — a little single-arm/leg work will even it out.':''}</div>`:`<div class="help" style="margin-bottom:10px">${prop&&prop.reason?'📸 '+esc(prop.reason)+' — so I used your training data & goal instead.':'Based on your training data & goal.'}</div>`}
+    <div class="help" style="margin-bottom:10px">⚠ A smart estimate from your photo + training — <b>not a medical scan</b>.</div>
     ${a.weakPoints.map((w,i)=>`
-      <div class="exline" style="align-items:flex-start"><span><b>${i+1}. ${esc(w.label)}</b><div class="muted" style="font-size:11.5px">${esc(w.reasons.join(' · ')||'balanced')}</div></span>
-      <span class="m" style="min-width:90px;text-align:right"><span class="bar" style="width:80px;display:inline-block;vertical-align:middle"><i style="width:${Math.round(w.score/maxScore*100)}%;background:linear-gradient(90deg,var(--warn),var(--danger))"></i></span></span></div>`).join('')}
+      <div class="exline" style="align-items:flex-start"><span><b>${i+1}. ${esc(w.label)}</b><div class="muted" style="font-size:11.5px">${esc(w.reasons.join(' · ')||'a bit behind')}</div></span>
+      <span class="m" style="min-width:84px;text-align:right"><span class="bar" style="width:74px;display:inline-block;vertical-align:middle"><i style="width:${Math.round(w.score/maxScore*100)}%;background:linear-gradient(90deg,var(--warn),var(--danger))"></i></span></span></div>`).join('')}
   </div>
   <div class="card">
-    <div class="between"><h3>Your bring-up plan</h3><button class="btn primary sm" onclick="applyPhysiquePlan()">＋ Add to my programme</button></div>
-    <div class="desc">Extra targeted volume for your weak points — equipment- and injury-aware. Adding it slots these into the best day of your week (deduplicated).</div>
+    <div class="between"><h3>Fix it</h3><button class="btn primary sm" onclick="applyPhysiquePlan()">✏️ Update my plan</button></div>
+    <div class="desc">I'll add this targeted work to the best day of your week — equipment- &amp; injury-aware, no duplicates.</div>
     ${spec.map(s=>`
       <div style="margin:10px 0;padding:10px 12px;background:var(--bg);border:1px solid var(--line);border-radius:10px">
         <b style="font-size:13px">${esc(s.label)} <span class="tag acc" style="padding:1px 7px">+${s.addSets} sets/wk</span></b>
-        ${s.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span></span><span class="m">${e.sets}×${e.repLo}-${e.repHi} · RPE ${e.rpe}</span></div>`:''}).join('')}
-      </div>`).join('')||'<div class="muted">No suitable exercises for your current equipment — add equipment in Settings.</div>'}
+        ${s.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span></span><span class="m">${e.sets}×${e.repLo}-${e.repHi}</span></div>`:''}).join('')}
+      </div>`).join('')||'<div class="muted">No suitable exercises for your equipment — add some in Settings.</div>'}
   </div>`;
 }
 
@@ -1563,6 +1664,7 @@ async function cloudPull(initial){
         merged.physique.savedPhotos = localPhotos;
         merged._cloudUpdatedAt = data.updated_at;
         S = merged; localStorage.setItem('atlas.v2', JSON.stringify(S));
+        if(S.onboarded && $('#onboard')) $('#onboard').classList.remove('on');  // remote brought a set-up account → skip wizard
         updateReadinessPill(); renderFeed(); if(current) nav(current);
         setSyncStatus('synced');
       } else if(initial){
@@ -1839,17 +1941,92 @@ function loadDemo(){
 }
 
 /* ================================================================
+   10b. ONBOARDING WIZARD (first run — build a plan in ~30 seconds)
+   ================================================================ */
+const WHERE_EQUIP = {
+  gym:{label:'Full gym',em:'🏋️',sub:'Barbells, machines, cables, dumbbells',eq:['barbell','dumbbell','machine','cable','bodyweight']},
+  home_db:{label:'Home with dumbbells',em:'🏠',sub:'Dumbbells & bodyweight',eq:['dumbbell','bodyweight','bands']},
+  bodyweight:{label:'Bodyweight only',em:'🤸',sub:'No equipment needed',eq:['bodyweight']},
+};
+const OB_GOALS = [
+  {k:'hypertrophy',em:'💪',label:'Build muscle',sub:'Add size and shape'},
+  {k:'fatloss',em:'🔥',label:'Lose fat',sub:'Lean out, stay toned'},
+  {k:'strength',em:'🏋️',label:'Get stronger',sub:'Lift heavier over time'},
+  {k:'general',em:'✨',label:'Stay fit & healthy',sub:'Balanced, sustainable'},
+];
+const OB_EXP = [
+  {k:'beginner',em:'🌱',label:'New to this',sub:'Under a year of training'},
+  {k:'intermediate',em:'📈',label:'Some experience',sub:'1–3 years'},
+  {k:'advanced',em:'🔥',label:'Experienced',sub:'3+ years'},
+];
+let OB = {step:0, data:{}};
+function startOnboarding(){ OB={step:0, data:{gender:'', age:'', heightCm:'', weightKg:'', goal:'', days:4, where:'gym', experience:'intermediate'}}; $('#onboard').classList.add('on'); renderOnboard(); }
+function obDots(n,i){ return `<div class="ob-dots">${Array.from({length:n},(_,x)=>`<i class="${x===i?'on':''}"></i>`).join('')}</div>`; }
+function obCapture(){ if($('#ob_age'))OB.data.age=$('#ob_age').value; if($('#ob_h'))OB.data.heightCm=$('#ob_h').value; if($('#ob_w'))OB.data.weightKg=$('#ob_w').value; }
+function obSet(k,v){ obCapture(); OB.data[k]=v; renderOnboard(); }
+function obNext(){ obCapture(); OB.step++; renderOnboard(); }
+function obBack(){ obCapture(); OB.step=Math.max(0,OB.step-1); renderOnboard(); }
+function renderOnboard(){
+  const d=OB.data, N=5; let inner='';
+  if(OB.step===0){
+    inner=`<div class="ob-logo">A</div><h2>Welcome to Atlas</h2>
+      <div class="ob-sub">Your personal training coach. Answer a few quick questions and I'll build your plan — about 30 seconds.</div>
+      <div class="ob-actions"><button class="btn primary" onclick="obNext()">Let's go →</button></div>
+      <button class="ob-skip" onclick="skipOnboarding()">Skip, I'll set up later</button>`;
+  } else if(OB.step===1){
+    inner=`${obDots(N,0)}<h2>About you</h2><div class="ob-sub">This tailors your plan and rep ranges to you.</div>
+      <div class="ob-chips" style="margin-bottom:16px">${['male','female','other'].map(g=>`<span class="ob-chip ${d.gender===g?'on':''}" onclick="obSet('gender','${g}')">${g[0].toUpperCase()+g.slice(1)}</span>`).join('')}</div>
+      <div class="ob-row">
+        <div class="ob-field"><label>Age</label><input id="ob_age" type="number" inputmode="numeric" value="${d.age}" placeholder="28"></div>
+        <div class="ob-field"><label>Height (cm)</label><input id="ob_h" type="number" inputmode="numeric" value="${d.heightCm}" placeholder="178"></div>
+        <div class="ob-field"><label>Weight (kg)</label><input id="ob_w" type="number" inputmode="decimal" value="${d.weightKg}" placeholder="80"></div>
+      </div>
+      <div class="ob-actions"><button class="btn ghost" onclick="obBack()">Back</button><button class="btn primary" onclick="obNext()">Next →</button></div>`;
+  } else if(OB.step===2){
+    inner=`${obDots(N,1)}<h2>What's your main goal?</h2><div class="ob-sub">I'll bias your whole plan toward this.</div>
+      <div class="ob-opts">${OB_GOALS.map(g=>`<div class="ob-opt ${d.goal===g.k?'on':''}" onclick="obSet('goal','${g.k}')"><span class="em">${g.em}</span><div><b>${g.label}</b><small>${g.sub}</small></div></div>`).join('')}</div>
+      <div class="ob-actions"><button class="btn ghost" onclick="obBack()">Back</button><button class="btn primary" ${d.goal?'':'disabled'} onclick="obNext()">Next →</button></div>`;
+  } else if(OB.step===3){
+    inner=`${obDots(N,2)}<h2>Where do you train?</h2><div class="ob-sub">So I only pick exercises you can actually do.</div>
+      <div class="ob-opts">${Object.entries(WHERE_EQUIP).map(([k,w])=>`<div class="ob-opt ${d.where===k?'on':''}" onclick="obSet('where','${k}')"><span class="em">${w.em}</span><div><b>${w.label}</b><small>${w.sub}</small></div></div>`).join('')}</div>
+      <div style="margin-top:16px"><label class="fld" style="text-align:center;display:block">How many days a week? <b style="color:var(--accent)">${d.days}</b></label>
+      <div class="ob-chips">${[2,3,4,5,6].map(n=>`<span class="ob-chip ${d.days===n?'on':''}" onclick="obSet('days',${n})">${n}</span>`).join('')}</div></div>
+      <div class="ob-actions"><button class="btn ghost" onclick="obBack()">Back</button><button class="btn primary" onclick="obNext()">Next →</button></div>`;
+  } else if(OB.step===4){
+    inner=`${obDots(N,3)}<h2>Your experience</h2><div class="ob-sub">Sets the difficulty and how much volume you get.</div>
+      <div class="ob-opts">${OB_EXP.map(e=>`<div class="ob-opt ${d.experience===e.k?'on':''}" onclick="obSet('experience','${e.k}')"><span class="em">${e.em}</span><div><b>${e.label}</b><small>${e.sub}</small></div></div>`).join('')}</div>
+      <div class="ob-actions"><button class="btn ghost" onclick="obBack()">Back</button><button class="btn primary" onclick="obFinish()">Build my plan →</button></div>`;
+  } else {
+    inner=`${obDots(N,4)}<div class="ob-build"><div class="ob-spin"></div><div><b style="font-size:16px">Building your plan…</b><div class="ob-sub" style="margin:6px 0 0">A ${d.days}-day plan, tailored to you</div></div></div>`;
+  }
+  $('#onboard').innerHTML=`<div class="ob-wrap">${inner}</div>`;
+}
+function obFinish(){
+  obCapture(); const d=OB.data;
+  S.profile.gender=d.gender||''; S.profile.age=+d.age||null; S.profile.heightCm=+d.heightCm||null; S.profile.weightKg=+d.weightKg||null;
+  S.profile.goal=d.goal||'hypertrophy'; S.profile.days=clamp(+d.days||4,2,6); S.profile.experience=d.experience||'intermediate';
+  S.profile.equipment=(WHERE_EQUIP[d.where]||WHERE_EQUIP.gym).eq.slice();
+  S.profile.name=S.profile.name||'Athlete'; S.onboarded=true;
+  OB.step=5; renderOnboard();
+  generateProgram();
+  setTimeout(()=>{ $('#onboard').classList.remove('on'); nav('dash'); toast('Your plan is ready 💪'); }, 1100);
+}
+function skipOnboarding(){ S.onboarded=true; if(!S.program) generateProgram(); else save(); $('#onboard').classList.remove('on'); nav('dash'); }
+function maybeOnboard(){ if(!S.onboarded && !S.program && !(S.logs&&S.logs.length)){ startOnboarding(); return true; } if(!S.onboarded){ S.onboarded=true; save(); } return false; }
+
+/* ================================================================
    11. BOOT
    ================================================================ */
 $$('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();nav(a.dataset.view);}));
 window.addEventListener('resize',()=>{ $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000); });
 $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000);
-updateReadinessPill(); renderFeed(); updateSyncBadge();
+updateReadinessPill(); renderFeed(); updateSyncBadge(); applyAdvancedUI();
 // A paused session persists in S.activeSession; the dashboard offers a Resume card (see RENDER.dash).
 try{ nav('dash'); }catch(e){ console.error('boot render failed, resetting corrupt state', e); localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); nav('dash'); }
+maybeOnboard();   // first-run wizard for brand-new users
 cloudInit();  // optional cloud sync — no-op unless a Supabase project is configured
 // expose for inline handlers
-Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
+Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,startOnboarding,obNext,obBack,obSet,obFinish,skipOnboarding,toggleAdvanced,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
 // PWA: register the service worker so Atlas installs to the home screen and works offline (HTTPS/localhost only).
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
