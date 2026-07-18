@@ -285,7 +285,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
       <a data-view="progress"><span class="ic">📈</span> Progress</a>
       <a data-view="physique"><span class="ic">📸</span> Physique</a>
       <a data-view="recovery"><span class="ic">♥</span> Check-in</a>
-      <a data-view="mission" data-adv="1"><span class="ic">✦</span> Quick session</a>
+      <a data-view="mission"><span class="ic">⚡</span> Quick workout</a>
       <a data-view="twin" data-adv="1"><span class="ic">⧉</span> Digital Twin</a>
       <a data-view="coaches" data-adv="1"><span class="ic">⚑</span> Escalation</a>
       <a data-view="agents" data-adv="1"><span class="ic">⚙</span> Agents &amp; Policy</a>
@@ -324,7 +324,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
 <div class="moresheet" id="moresheet">
   <div class="grab"></div>
   <a onclick="nav('recovery')"><span class="ic">♥</span> Daily check-in</a>
-  <a data-adv="1" onclick="nav('mission')"><span class="ic">✦</span> Quick session</a>
+  <a onclick="nav('mission')"><span class="ic">⚡</span> Quick workout</a>
   <a data-adv="1" onclick="nav('twin')"><span class="ic">⧉</span> Digital Twin</a>
   <a data-adv="1" onclick="nav('coaches')"><span class="ic">⚑</span> Human Escalation</a>
   <a data-adv="1" onclick="nav('agents')"><span class="ic">⚙</span> Agents &amp; Policy</a>
@@ -984,7 +984,7 @@ function habitCheck(){
    ================================================================ */
 const VIEWS={
   dash:{title:'Home',sub:'Your training, made simple'},
-  mission:{title:'Quick session',sub:'Short on time? Describe your situation and I build it'},
+  mission:{title:'Quick workout',sub:'Short on time? Describe your situation and I build it'},
   program:{title:'My Plan',sub:'Your weekly workout plan'},
   progress:{title:'Progress',sub:'How you\'re doing over time'},
   physique:{title:'Physique',sub:'Snap a photo — I find what to prioritise'},
@@ -1012,7 +1012,7 @@ function toggleAdvanced(on){
   document.body.classList.toggle('adv', S.advanced);
   const a=$('#advToggle'), m=$('#advToggleM'); if(a)a.checked=S.advanced; if(m)m.checked=S.advanced;
   toast(S.advanced?'Advanced mode on':'Advanced mode off');
-  if(!S.advanced && ['mission','twin','coaches','agents'].includes(current)) nav('dash');  // leave a now-hidden view
+  if(!S.advanced && ['twin','coaches','agents'].includes(current)) nav('dash');  // leave a now-hidden view
 }
 function applyAdvancedUI(){ document.body.classList.toggle('adv', !!S.advanced); const a=$('#advToggle'), m=$('#advToggleM'); if(a)a.checked=!!S.advanced; if(m)m.checked=!!S.advanced; }
 
@@ -1056,6 +1056,7 @@ dash(){
 
   <!-- quick actions -->
   <div class="row" style="margin-bottom:16px">
+    <button class="btn" onclick="nav('mission')">⚡ Quick workout</button>
     <button class="btn" onclick="nav('recovery')">♥ Daily check-in</button>
     <button class="btn" onclick="nav('physique')">📸 Physique scan</button>
     <button class="btn" onclick="nav('progress')">📈 Progress</button>
@@ -1085,13 +1086,12 @@ mission(){
   const examples=['I have 38 minutes, the gym is crowded, I slept badly and I don\'t want to aggravate my shoulder','45 min, feeling fresh, want to focus on pull','Quick 25 minute legs session, knee is a bit sore','An hour, busy gym, push day please'];
   return `
   <div class="card">
-    <h3>✦ Mission Mode</h3>
-    <div class="desc">Don't pick a workout — describe your situation. The engine reads your programme, restrictions, recent training and equipment, then builds one session that fits. This is the difference between an app that <i>shows</i> a workout and one that <i>runs</i> your training.</div>
-    <textarea id="missionInput" placeholder="e.g. I have 38 minutes, the gym is crowded, I slept badly and I don't want to aggravate my shoulder">${m?esc(m.mission.raw):''}</textarea>
-    <div class="row" style="margin:10px 0"><button class="btn primary" onclick="runMission()">Build my session →</button><button class="btn ghost" onclick="micMission()" id="micBtn" title="Voice input">🎙 Speak</button></div>
-    <div class="muted" style="font-size:12px;margin-bottom:6px">Try:</div>
+    <h3>⚡ Quick workout</h3>
+    <div class="desc">Short on time, gym's packed, or feeling off? Just tell me your situation and I'll build one session that fits — right now, around your plan, your equipment and any niggles.</div>
+    <textarea id="missionInput" placeholder="e.g. I have 30 minutes, the gym is crowded, and I want to focus on arms">${m?esc(m.mission.raw):''}</textarea>
+    <div class="row" style="margin:10px 0"><button class="btn primary" onclick="runMission()">Build my workout →</button><button class="btn ghost" onclick="micMission()" id="micBtn" title="Voice input">🎙 Speak</button></div>
+    <div class="muted" style="font-size:12px;margin-bottom:6px">Tap an example:</div>
     <div class="row">${examples.map(e=>`<span class="chip" onclick="document.getElementById('missionInput').value=this.textContent">${esc(e)}</span>`).join('')}</div>
-    <div class="help">//LLM: intent parsing here is deterministic & offline. A language model would widen the phrasings understood; the engine below stays authoritative on what's safe.</div>
   </div>
   <div id="missionOut">${m?missionResult(m):''}</div>`;
 },
