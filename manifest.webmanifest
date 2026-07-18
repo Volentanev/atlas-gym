@@ -1,8 +1,8 @@
 {
   "id": "/atlas-gym/",
-  "name": "Atlas — Autonomous Training OS",
-  "short_name": "Atlas",
-  "description": "Your autonomous training companion — plans your week, conducts each session, and adapts from your performance and recovery. Fully on-device and private.",
+  "name": "RepPilot — Your training co-pilot",
+  "short_name": "RepPilot",
+  "description": "Your training co-pilot — builds your plan, runs each workout, reads your physique and adapts to you. Simple, private and on-device.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",

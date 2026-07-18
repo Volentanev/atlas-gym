@@ -10,8 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Atlas" />
-<title>Atlas — Autonomous Training OS</title>
+<meta name="apple-mobile-web-app-title" content="RepPilot" />
+<title>RepPilot — Your training co-pilot</title>
 <style>
 /* ============================================================= */
 /*  ATLAS — Autonomous Training Operating System                  */
@@ -47,7 +47,7 @@ button{font-family:inherit; cursor:pointer}
 .app{display:grid; grid-template-columns:230px 1fr; min-height:100vh}
 .side{background:linear-gradient(180deg,#0d141b,#0b0f14); border-right:1px solid var(--line); padding:16px 12px; position:sticky; top:0; height:100vh; display:flex; flex-direction:column; gap:4px}
 .brand{display:flex; align-items:center; gap:10px; padding:6px 8px 14px}
-.brand .logo{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#04121a;font-weight:800;font-size:18px;box-shadow:0 4px 14px rgba(94,200,255,.35)}
+.brand .logo{width:34px;height:34px;border-radius:9px;background:#fff;display:grid;place-items:center;padding:3px;box-shadow:0 4px 14px rgba(94,200,255,.25)}
 .brand b{font-size:16px;letter-spacing:.3px}
 .brand small{display:block;color:var(--ink3);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase}
 .nav{display:flex;flex-direction:column;gap:2px;margin-top:4px}
@@ -190,7 +190,7 @@ tr:last-child td{border-bottom:none}
   radial-gradient(700px 500px at 50% 110%, #10202a 0%, transparent 55%), var(--bg);overflow:auto}
 .onboard.on{display:flex}
 .ob-wrap{margin:auto;width:min(460px,92vw);padding:28px 20px calc(28px + env(safe-area-inset-bottom));text-align:center}
-.ob-logo{width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:grid;place-items:center;color:#04121a;font-weight:800;font-size:30px;margin:0 auto 14px;box-shadow:0 8px 26px rgba(94,200,255,.4)}
+.ob-logo{width:72px;height:72px;border-radius:18px;background:#fff;display:grid;place-items:center;padding:7px;margin:0 auto 14px;box-shadow:0 8px 26px rgba(94,200,255,.32)}
 .ob-wrap h2{font-size:23px;margin:0 0 6px;letter-spacing:-.3px}
 .ob-wrap .ob-sub{color:var(--ink2);font-size:14px;margin-bottom:22px;line-height:1.5}
 .ob-dots{display:flex;gap:6px;justify-content:center;margin-bottom:22px}
@@ -279,8 +279,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   <!-- SIDEBAR -->
   <aside class="side" id="side">
     <div class="brand">
-      <div class="logo">A</div>
-      <div><b>Atlas</b><small>Training OS</small></div>
+      <div class="logo" id="brandLogo"></div>
+      <div><b>RepPilot</b><small>Train smarter</small></div>
     </div>
     <nav class="nav" id="nav">
       <a data-view="dash" class="on"><span class="ic">◎</span> Home</a>
@@ -527,6 +527,8 @@ const fmtDate=iso=> new Date(iso+'T00:00').toLocaleDateString(undefined,{weekday
 const daysBetween=(a,b)=> Math.round((new Date(b)-new Date(a))/86400000);
 function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function toast(msg,ic='✓'){ const t=$('#toast'); t.innerHTML=`<b style="color:var(--accent)">${ic}</b> ${esc(msg)}`; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2600); }
+// RepPilot brand mark (blue ring + motion dashes + paper plane + navy R with a dumbbell).
+const LOGO_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="width:100%;height:100%;display:block"><circle cx="256" cy="256" r="150" fill="none" stroke="#1f74ff" stroke-width="26" stroke-linecap="round" stroke-dasharray="340 92 385 126"/><g stroke="#1f74ff" stroke-width="16" stroke-linecap="round"><line x1="132.1" y1="341.7" x2="150.1" y2="363.1"/><line x1="118.4" y1="316.7" x2="128.8" y2="336.1"/><line x1="110.3" y1="292.2" x2="114.9" y2="307.4"/></g><g fill="#1f74ff"><path d="M412 116 L342 152 L380 166 Z"/><path d="M380 166 L372 198 L392 176 Z"/></g><text x="258" y="340" font-family="Arial, Helvetica, sans-serif" font-size="210" font-weight="900" fill="#122036" text-anchor="middle">R</text><g stroke="#ffffff" stroke-width="4"><rect x="208" y="243" width="96" height="14" rx="7" fill="#1f74ff"/><rect x="190" y="231" width="20" height="38" rx="6" fill="#122036"/><rect x="169" y="222" width="20" height="56" rx="7" fill="#122036"/><rect x="302" y="231" width="20" height="38" rx="6" fill="#122036"/><rect x="323" y="222" width="20" height="56" rx="7" fill="#122036"/></g></svg>';
 
 /* ---------------------------------------------------------------
    4. AGENT / POLICY / AUDIT LAYER
@@ -648,7 +650,7 @@ function applyWeek(exs){
       deload, targetReps };
   });
 }
-// Progression pause: on a red-flag recovery day (or a run of low-confidence decisions) Atlas holds load rather than pushing.
+// Progression pause: on a red-flag recovery day (or a run of low-confidence decisions) RepPilot holds load rather than pushing.
 function isProgressionPaused(){
   const r=S.readiness[0];
   const painFlag = r && r.date===todayISO() && r.score<32;
@@ -1313,7 +1315,7 @@ coaches(){
   return `
   <div class="card" style="margin-bottom:16px">
     <h3>⚑ Human escalation</h3>
-    <div class="desc">Atlas knows the edge of its competence. When it sees pain reports, conflicting signals or persistently low confidence, it pauses aggressive progression and prepares a <b>structured handoff</b> — so a trainer or physio gets useful context, not a chat transcript.</div>
+    <div class="desc">RepPilot knows the edge of its competence. When it sees pain reports, conflicting signals or persistently low confidence, it pauses aggressive progression and prepares a <b>structured handoff</b> — so a trainer or physio gets useful context, not a chat transcript.</div>
     <div class="row" style="margin:8px 0">
       <span class="tag ${painFlag?'dng':'good'}">${painFlag?'Low readiness streak detected':'No red flags'}</span>
       <span class="tag ${lowConf>3?'warn':''}">${lowConf} low-confidence decisions</span>
@@ -1385,7 +1387,7 @@ settings(){
   ${cloudSyncCard()}
   <div class="card" style="margin-top:16px">
     <h3>Data</h3>
-    <div class="desc">Everything lives in your browser's localStorage. Health & training data is sensitive — Atlas keeps it on-device by default.</div>
+    <div class="desc">Everything lives in your browser's localStorage. Health & training data is sensitive — RepPilot keeps it on-device by default.</div>
     <div class="row">
       <button class="btn" onclick="exportData()">⭳ Export JSON</button>
       <button class="btn" onclick="document.getElementById('importFile').click()">⭱ Import JSON</button>
@@ -1527,14 +1529,14 @@ Latest readiness: ${last?`${last.score}% (confidence ${confBand(last.conf)})`:'n
 Adherence (4wk): ${adherence(4).pct}%
 Stalled lifts (≥3 sessions, no e1RM gain): ${stalled.join(', ')||'none detected'}
 Low-confidence agent decisions (last 30): ${S.audit.filter(a=>a.conf<.55).length}
-Action taken by Atlas: ${isProgressionPaused()?'progression paused — upward load auto-adjustments are held pending review':'no red-flag pause active; progression continuing normally'}.
+Action taken by RepPilot: ${isProgressionPaused()?'progression paused — upward load auto-adjustments are held pending review':'no red-flag pause active; progression continuing normally'}.
 Recommended for the professional: review flagged lifts / any pain reports; confirm restriction list; advise on progression.`;
   logAgent('director',`Prepared a structured escalation summary for a human coach/physio. Not sent — awaiting your approval.`,{conf:.85,inputs:['readiness','stalled lifts','audit'],mode:'suggest',kind:'suggest'});
   $('#handoffOut').innerHTML=`<div class="card">
     <div class="between"><h3>Structured handoff — ready</h3><span class="tag warn">not sent</span></div>
     <div class="desc">Sending a message on your behalf needs your explicit go-ahead. Copy this into an email/DM to your trainer or physio.</div>
     <textarea readonly style="min-height:220px;font-family:var(--mono);font-size:12px">${esc(summary)}</textarea>
-    <div class="row" style="margin-top:10px"><button class="btn" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value);toast('Copied')">⧉ Copy</button><span class="muted" style="font-size:12px">Atlas won't email this itself — that's your call.</span></div>
+    <div class="row" style="margin-top:10px"><button class="btn" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.value);toast('Copied')">⧉ Copy</button><span class="muted" style="font-size:12px">RepPilot won't email this itself — that's your call.</span></div>
   </div>`;
 }
 
@@ -1632,7 +1634,7 @@ function saveSettings(silent){
 }
 function exportData(){ const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download='atlas-data.json'; a.click(); URL.revokeObjectURL(u); }
 function importData(e){ const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>{ try{ const next=normalizeState(JSON.parse(r.result)); S=next; save(); toast('Imported'); nav('dash'); updateReadinessPill(); renderFeed(); }catch(err){toast('Invalid or unreadable file','⚠');} }; r.readAsText(f); }
-function wipe(){ if(confirm('Erase all Atlas data on this device? This cannot be undone.')){ localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); save(); nav('dash'); toast('Erased'); updateReadinessPill(); renderFeed(); } }
+function wipe(){ if(confirm('Erase all RepPilot data on this device? This cannot be undone.')){ localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); save(); nav('dash'); toast('Erased'); updateReadinessPill(); renderFeed(); } }
 
 /* ---------- Drawer / feed ---------- */
 function toggleDrawer(){ $('#drawer').classList.toggle('open'); }
@@ -2053,7 +2055,7 @@ function obBack(){ obCapture(); OB.step=Math.max(0,OB.step-1); renderOnboard(); 
 function renderOnboard(){
   const d=OB.data, N=5; let inner='';
   if(OB.step===0){
-    inner=`<div class="ob-logo">A</div><h2>Welcome to Atlas</h2>
+    inner=`<div class="ob-logo">${LOGO_SVG}</div><h2>Welcome to RepPilot</h2>
       <div class="ob-sub">Your personal training coach. Answer a few quick questions and I'll build your plan — about 30 seconds.</div>
       <div class="ob-actions"><button class="btn primary" onclick="obNext()">Let's go →</button></div>
       <button class="ob-skip" onclick="skipOnboarding()">Skip, I'll set up later</button>`;
@@ -2104,6 +2106,7 @@ function maybeOnboard(){ if(!S.onboarded && !S.program && !(S.logs&&S.logs.lengt
 $$('#nav a').forEach(a=>a.addEventListener('click',e=>{e.preventDefault();nav(a.dataset.view);}));
 window.addEventListener('resize',()=>{ $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000); });
 $('#menuBtn').classList.toggle('hidden', window.innerWidth>1000);
+if($('#brandLogo')) $('#brandLogo').innerHTML=LOGO_SVG;
 updateReadinessPill(); renderFeed(); updateSyncBadge(); applyAdvancedUI();
 // A paused session persists in S.activeSession; the dashboard offers a Resume card (see RENDER.dash).
 try{ nav('dash'); }catch(e){ console.error('boot render failed, resetting corrupt state', e); localStorage.removeItem('atlas.v2'); S=structuredClone(DEFAULT_STATE); nav('dash'); }
@@ -2111,7 +2114,7 @@ maybeOnboard();   // first-run wizard for brand-new users
 cloudInit();  // optional cloud sync — no-op unless a Supabase project is configured
 // expose for inline handlers
 Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,startOnboarding,obNext,obBack,obSet,obFinish,skipOnboarding,toggleAdvanced,openSwap,closeSwap,chooseSwap,clearExPrefs,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
-// PWA: register the service worker so Atlas installs to the home screen and works offline (HTTPS/localhost only).
+// PWA: register the service worker so RepPilot installs to the home screen and works offline (HTTPS/localhost only).
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>
 </body>
