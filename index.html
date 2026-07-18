@@ -1538,7 +1538,9 @@ async function onAuthChange(){
   else { setSyncStatus('signedout'); }
   if(current==='settings') nav('settings');
 }
-// Pull remote; adopt it if it's newer than what we last synced (last-write-wins). Photos stay local.
+// Rough "how much real data is here" score, used to protect against an emptier device clobbering a richer one.
+function stateRichness(st){ return (((st&&st.logs)||[]).length)*2 + ((st&&st.program)?5:0) + (((st&&st.readiness)||[]).length); }
+// Pull remote and decide whether to adopt it. First-ever sync = keep the richer side; after that = last-write-wins. Photos stay local.
 async function cloudPull(initial){
   if(!CLOUD.user || !CLOUD.client) return;
   try{
@@ -1547,7 +1549,15 @@ async function cloudPull(initial){
     if(data && data.data){
       const remoteT=new Date(data.updated_at).getTime();
       const localT = S._cloudUpdatedAt? new Date(S._cloudUpdatedAt).getTime() : 0;
-      if(remoteT > localT){
+      let adopt;
+      if(!S._cloudUpdatedAt){
+        // First sync on this device: never let an emptier cloud overwrite richer local data.
+        const lr=stateRichness(S), rr=stateRichness(data.data);
+        adopt = rr>lr || (rr===lr && rr>0 && remoteT>localT);
+      } else {
+        adopt = remoteT > localT;   // established sync → last-write-wins
+      }
+      if(adopt){
         const localPhotos = (S.physique&&S.physique.savedPhotos)||[];   // preserve device-only photos
         const merged = normalizeState(data.data);
         merged.physique.savedPhotos = localPhotos;
@@ -1556,7 +1566,7 @@ async function cloudPull(initial){
         updateReadinessPill(); renderFeed(); if(current) nav(current);
         setSyncStatus('synced');
       } else if(initial){
-        await cloudPush();   // local is newer or same → push it up
+        await cloudPush();   // local is richer/newer → push it up (protects local data)
       } else { setSyncStatus('synced'); }
     } else if(initial){
       await cloudPush();     // nothing remote yet → seed it
