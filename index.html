@@ -95,6 +95,9 @@ body:not(.adv) [data-adv]{display:none!important}   /* power-user items hidden u
 .moresheet a:last-child{border-bottom:none}
 .moresheet a .ic{width:24px;text-align:center;color:var(--accent);font-size:18px}
 .moresheet a:active{background:var(--panel2)}
+.swap-opt{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:13px 14px;border:1px solid var(--line);background:var(--panel);border-radius:12px;margin-bottom:8px;color:var(--ink);cursor:pointer}
+.swap-opt:hover{border-color:var(--accent)} .swap-opt:active{background:var(--panel2)}
+.swap-opt b{font-size:14px} .swap-opt small{display:block;color:var(--ink3);font-size:12px;margin-top:1px}
 
 @media(max-width:1080px){ .g4{grid-template-columns:repeat(2,1fr)} }
 @media(max-width:860px){
@@ -332,6 +335,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;heigh
   <label style="display:flex;align-items:center;gap:12px;padding:15px 12px;font-size:15px;cursor:pointer"><input type="checkbox" id="advToggleM" onchange="toggleAdvanced(this.checked)" style="width:auto"> <span class="ic" style="width:24px;text-align:center;color:var(--accent);font-size:18px">⚑</span> Advanced mode</label>
 </div>
 
+<!-- SWAP-EXERCISE SHEET -->
+<div class="more-backdrop" id="swapBackdrop" onclick="closeSwap()"></div>
+<div class="moresheet" id="swapSheet"><div class="grab"></div><div id="swapBody" style="max-height:64vh;overflow:auto"></div></div>
+
 <!-- AGENT FEED DRAWER -->
 <div class="drawer" id="drawer">
   <div class="dh">
@@ -471,6 +478,7 @@ const DEFAULT_STATE = {
     gender:'', age:null, heightCm:null, weightKg:null,   // collected in onboarding; used for context & physique read
     equipment:['barbell','dumbbell','machine','cable','bodyweight'],
     restrictions:[], // e.g. ['shoulder']
+    exPrefs:{},      // preferred-exercise overrides: fromId -> toId (e.g. bench -> machine_press)
     gymBusyHours:[17,18,19]},
   program:null,          // {createdWeek, weeks, split, cursor:{day}}
   logs:[],               // completed sessions [{date, name, exercises:[{id,sets:[{w,r,rpe}]}], mission?}]
@@ -495,6 +503,7 @@ function normalizeState(raw){
   for(const k of ['logs','readiness','audit']) if(!Array.isArray(s[k])) s[k]=[];
   if(!Array.isArray(s.profile.equipment)) s.profile.equipment=structuredClone(DEFAULT_STATE.profile.equipment);
   if(!Array.isArray(s.profile.restrictions)) s.profile.restrictions=[];
+  if(!s.profile.exPrefs || typeof s.profile.exPrefs!=='object') s.profile.exPrefs={};
   const clean=e=>e&&EXBYID[e.id];
   if(s.program && Array.isArray(s.program.week)) s.program.week.forEach(d=>{ if(Array.isArray(d.exercises)) d.exercises=d.exercises.filter(clean); });
   if(s.lastMission && Array.isArray(s.lastMission.exercises)) s.lastMission.exercises=s.lastMission.exercises.filter(clean);
@@ -655,7 +664,7 @@ function generateProgram(){
   const week = template.map(([name,slots])=>{
     const used=new Set(); const exercises=[];
     slots.forEach(sc=>{ const ex=pickForSlot(sc, used, pool); if(ex){ used.add(ex.id); const pr=prescribe(ex,{goal}); exercises.push({id:ex.id, sets:pr.sets, repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest}); } });
-    return {name, exercises, done:false};
+    return {name, exercises:applyPrefs(exercises), done:false};   // honour preferred-exercise overrides
   });
   S.program = {createdISO:todayISO(), split:`${days}-day`, week, deloadEvery:5};
   S.weekIndex=0;
@@ -735,8 +744,11 @@ function generateMission(text){
     slots=[...new Set(wanted)].slice(0,nEx);
   }
   // 4. build session honoring crowded + restrictions
-  const used=new Set(); const exercises=[];
+  const used=new Set(); let exercises=[];
   slots.forEach(sc=>{ const ex=pickForSlot(sc, used, pool, {crowded:p.crowded}); if(ex){ used.add(ex.id); const pr=prescribe(ex,{goal,fatigue:effFatigue}); exercises.push({id:ex.id, sets:setsPerEx||pr.sets, repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest, load:pr.load}); } });
+  // apply preferred-exercise overrides (same pattern & goal → reps/RPE identical; swap id + load, keep set count)
+  const _um=new Set();
+  exercises = exercises.map(e=>{ let id=resolvePref(e.id); if(id!==e.id && _um.has(id)) id=e.id; _um.add(id); if(id!==e.id && EXBYID[id]){ const pr=prescribe(EXBYID[id],{goal,fatigue:effFatigue}); return {...e, id, load:pr.load}; } return e; });
 
   // 5. confidence: more info + more history -> higher
   let conf=.5;
@@ -777,6 +789,33 @@ function substitutes(exId, {crowded=true, restrict=[], exclude=new Set()}={}){
     .map(c=>({ex:c, overlap:c.pri.filter(m=>ex.pri.includes(m)).length, contention:c.pop}))
     .sort((a,b)=> (b.overlap-a.overlap) || (crowded? a.contention-b.contention : b.ex.comp-a.ex.comp))
     .slice(0,4).map(x=>x.ex);
+}
+// Alternative variants a user might prefer for an exercise (same movement pattern + muscle, available with their kit).
+function alternativesFor(exId){
+  const ex=EXBYID[exId]; if(!ex) return [];
+  return availableEx().filter(c=> c.id!==exId && c.p===ex.p && c.pri.some(m=>ex.pri.includes(m)))
+    .map(c=>({ex:c, overlap:c.pri.filter(m=>ex.pri.includes(m)).length}))
+    .sort((a,b)=> (b.overlap-a.overlap) || (a.ex.dif-b.ex.dif) || (b.ex.pop-a.ex.pop))
+    .slice(0,6).map(x=>x.ex);
+}
+// Preferred-exercise overrides. resolvePref follows the chain (with a loop guard) to the user's preferred variant.
+function resolvePref(id){
+  const prefs=(S.profile&&S.profile.exPrefs)||{}; const seen=new Set(); let cur=id;
+  while(prefs[cur] && !seen.has(cur)){ seen.add(cur); const nxt=prefs[cur]; if(!EXBYID[nxt] || !availableEx().some(e=>e.id===nxt)) break; cur=nxt; }
+  return cur;
+}
+// Remap a day's exercises to the user's preferred variants (recompute the prescription for the new movement; avoid duplicates).
+function applyPrefs(exercises){
+  if(!S.profile || !S.profile.exPrefs || !Object.keys(S.profile.exPrefs).length) return exercises;
+  const used=new Set(); const out=[];
+  exercises.forEach(e=>{
+    let id=resolvePref(e.id);
+    if(id!==e.id && used.has(id)) id=e.id;   // don't create a duplicate within the day
+    used.add(id);
+    if(id!==e.id && EXBYID[id]){ const pr=prescribe(EXBYID[id],{goal:S.profile.goal}); out.push({...e, id, sets:pr.sets, repLo:pr.repLo, repHi:pr.repHi, rpe:pr.rpe, rest:pr.rest}); }
+    else out.push(e);
+  });
+  return out;
 }
 
 /* ----- Physique Coach (on-device weak-point analysis) -----
@@ -1007,6 +1046,36 @@ function nav(v){
 }
 function openMore(){ $('#moresheet').classList.add('open'); $('#moreBackdrop').classList.add('open'); $$('.tabbar .tb').forEach(b=>b.classList.toggle('on', b.dataset.view==='more')); }
 function closeMore(){ $('#moresheet').classList.remove('open'); $('#moreBackdrop').classList.remove('open'); }
+// Preferred-exercise swap picker (from the plan). Records the choice as a persistent preference.
+function openSwap(dayIdx, exIdx){
+  if(!S.program) return;
+  const cur=S.program.week[dayIdx].exercises[exIdx]; const x=cur&&EXBYID[cur.id]; if(!x)return;
+  const alts=alternativesFor(cur.id);
+  $('#swapBody').innerHTML=`
+    <div style="padding:2px 12px 10px"><h3 style="margin:0 0 2px">Swap “${esc(x.n)}”</h3>
+      <div class="muted" style="font-size:12.5px">Pick the variant you prefer — I'll remember it and use it in your plans from now on.</div></div>
+    <div style="padding:0 6px 6px">
+      ${alts.length? alts.map(a=>`<button class="swap-opt" onclick="chooseSwap(${dayIdx},${exIdx},'${a.id}')"><span><b>${esc(a.n)}</b><small>${a.eq} · ${a.comp?'compound':'isolation'}</small></span><span class="tag acc">choose</span></button>`).join('')
+        : '<div class="muted" style="padding:12px">No alternatives available with your current equipment. Add equipment in Settings for more options.</div>'}
+      <button class="swap-opt" style="opacity:.65" onclick="closeSwap()"><span><b>Keep “${esc(x.n)}”</b><small>no change</small></span></button>
+    </div>`;
+  $('#swapSheet').classList.add('open'); $('#swapBackdrop').classList.add('open');
+}
+function closeSwap(){ $('#swapSheet').classList.remove('open'); $('#swapBackdrop').classList.remove('open'); }
+function chooseSwap(dayIdx, exIdx, newId){
+  if(!S.program || !EXBYID[newId]){ closeSwap(); return; }
+  const oldId=S.program.week[dayIdx].exercises[exIdx].id;
+  const oldName=EXBYID[oldId]?.n||'exercise', newName=EXBYID[newId].n;
+  if(newId!==oldId){
+    S.profile.exPrefs[oldId]=newId;
+    S.program.week.forEach(d=>{ d.exercises=applyPrefs(d.exercises); });   // remap every instance across the plan
+    save();
+    logAgent('director',`Swapped ${oldName} → ${newName} across your plan and saved it as your preference.`,{conf:.9,inputs:['your choice'],mode:'auto',kind:'auto'});
+    toast(`Now using ${newName} 👍`);
+  }
+  closeSwap(); nav('program');
+}
+function clearExPrefs(){ if(!Object.keys(S.profile.exPrefs||{}).length){toast('No preferences saved');return;} if(!confirm('Forget your exercise preferences? Rebuild your plan to get the defaults back.'))return; S.profile.exPrefs={}; save(); toast('Preferences cleared'); nav('settings'); }
 function toggleAdvanced(on){
   S.advanced=!!on; save();
   document.body.classList.toggle('adv', S.advanced);
@@ -1098,21 +1167,22 @@ mission(){
 
 /* ---------- PROGRAMME ---------- */
 program(){
-  if(!S.program) return `<div class="card"><div class="empty"><div class="big">▤</div>No programme yet.<br><br><button class="btn primary" onclick="doGenerate()">Build my programme</button></div></div>`;
+  if(!S.program) return `<div class="card"><div class="empty"><div class="big">▤</div>No plan yet.<br><br><button class="btn primary" onclick="startOnboarding()">Set up my plan</button></div></div>`;
   const p=S.program;
+  const prefTargets=new Set(Object.values(S.profile.exPrefs||{}));
   return `
   <div class="card" style="margin-bottom:16px">
     <div class="between">
-      <div><h3>${esc(p.split)} split · ${GOALS[S.profile.goal].label}</h3><div class="desc">Created ${fmtDate(p.createdISO)} · Week ${S.weekIndex+1} · deload every ${p.deloadEvery} weeks</div></div>
-      <div class="row"><button class="btn sm" onclick="doGenerate()">↻ Regenerate</button><button class="btn sm" onclick="advanceWeek()">Next week →</button></div>
+      <div><h3>${GOALS[S.profile.goal].label} · ${p.week.length} days/week</h3><div class="desc">Week ${S.weekIndex+1}${(S.weekIndex+1)%p.deloadEvery===0?' · easy week':''}</div></div>
+      <div class="row"><button class="btn sm" onclick="doGenerate()">↻ Rebuild</button><button class="btn sm" onclick="advanceWeek()">Next week →</button></div>
     </div>
-    <div class="rationale"><b>Reconciliation:</b> the Director advances load week to week, inserts easier weeks, and if you miss a day it reallocates the most important exercises rather than dropping them. Progression uses double-progression (add reps to the top of the range, then load).</div>
+    <div class="help">Tap <b>⇄</b> on any exercise to swap it for a variant you like better — I'll remember it. Tap <b>▶</b> to start a day.</div>
   </div>
   <div class="split">
     ${p.week.map((d,i)=>`
       <div class="daycol ${i===(S.weekIndex%p.week.length)?'today':''}">
-        <div class="dt"><span>${esc(d.name)}${i===(S.weekIndex%p.week.length)?' · today':''}</span><button class="btn ghost sm" onclick="startSession('program',${i})">▶</button></div>
-        ${d.exercises.map(e=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span></span><span class="m">${e.sets}×${e.repLo}-${e.repHi}</span></div>`:''}).join('')}
+        <div class="dt"><span>${esc(d.name)}${i===(S.weekIndex%p.week.length)?' · today':''}</span><button class="btn ghost sm" onclick="startSession('program',${i})">▶ Start</button></div>
+        ${d.exercises.map((e,j)=>{const x=EXBYID[e.id];return x?`<div class="exline"><span>${esc(x.n)} <span class="tag" style="padding:1px 6px">${x.eq}</span>${prefTargets.has(e.id)?'<span class="tag acc" style="padding:1px 6px">your pick</span>':''}</span><span class="row" style="gap:6px"><span class="m">${e.sets}×${e.repLo}-${e.repHi}</span><button class="btn ghost sm" title="Swap for a variant you prefer" onclick="openSwap(${i},${j})" style="padding:3px 9px">⇄</button></span></div>`:''}).join('')}
       </div>`).join('')}
   </div>`;
 },
@@ -1305,6 +1375,7 @@ settings(){
       <h3>Injury restrictions</h3>
       <div class="desc">Movements loading these areas are excluded everywhere — programme <i>and</i> Mission Mode.</div>
       <div class="row">${['shoulder','knee','lowerback','elbow','wrist','hip'].map(a=>`<span class="chip ${pr.restrictions.includes(a)?'on':''}" onclick="toggleArr('restrictions','${a}',this)">${a}</span>`).join('')}</div>
+      ${Object.keys(pr.exPrefs||{}).length?`<hr class="hr"><div class="between"><span class="dim" style="font-size:12.5px">You have ${Object.keys(pr.exPrefs).length} saved exercise preference${Object.keys(pr.exPrefs).length===1?'':'s'}</span><button class="btn ghost sm" onclick="clearExPrefs()">Clear</button></div>`:''}
       <hr class="hr">
       <button class="btn primary" onclick="saveSettings()">Save profile</button>
       <button class="btn" onclick="doGenerate()">Save & rebuild plan</button>
@@ -2039,7 +2110,7 @@ try{ nav('dash'); }catch(e){ console.error('boot render failed, resetting corrup
 maybeOnboard();   // first-run wizard for brand-new users
 cloudInit();  // optional cloud sync — no-op unless a Supabase project is configured
 // expose for inline handlers
-Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,startOnboarding,obNext,obBack,obSet,obFinish,skipOnboarding,toggleAdvanced,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
+Object.assign(window,{nav,openMore,closeMore,doGenerate,advanceWeek,runMission,micMission,setAutonomy,clearAudit,submitReadiness,runSim,buildHandoff,rescue,giveConsent,handlePhoto,removePhoto,toggleSavePhotos,runPhysique,applyPhysiquePlan,deletePhysiqueData,cloudSaveConfig,cloudAuth,cloudSignOut,cloudDisconnect,cloudBackupNow,startOnboarding,obNext,obBack,obSet,obFinish,skipOnboarding,toggleAdvanced,openSwap,closeSwap,chooseSwap,clearExPrefs,toggleArr,saveSettings,exportData,importData,wipe,toggleDrawer,startSession,resumeSession,discardActive,stopSession,finishSession,nextEx,prevEx,swapExercise,logSet,pickRPE,voiceSet,loadDemo});
 // PWA: register the service worker so Atlas installs to the home screen and works offline (HTTPS/localhost only).
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
 </script>

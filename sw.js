@@ -1,5 +1,5 @@
 /* Atlas service worker — network-first app shell, offline fallback. */
-const CACHE = 'atlas-v7';
+const CACHE = 'atlas-v8';
 const CORE = ['.', 'index.html', 'config.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
