@@ -1523,7 +1523,8 @@ async function cloudInit(){
   if(!navigator.onLine){ setSyncStatus('offline'); }
   try{
     const mod = await import('https://esm.sh/@supabase/supabase-js@2');
-    CLOUD.client = mod.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true}});
+    // lock no-op avoids a navigator.locks hang seen in some embedded webviews (safe for a single-user app)
+    CLOUD.client = mod.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, {auth:{persistSession:true, autoRefreshToken:true, lock:(_n,_t,fn)=>fn()}});
     CLOUD.client.auth.onAuthStateChange((_e, sess)=>{ CLOUD.user = sess? sess.user : null; onAuthChange(); });
     const { data:{ session } } = await CLOUD.client.auth.getSession();
     CLOUD.user = session? session.user : null;
@@ -1579,7 +1580,8 @@ function cloudQueuePush(){ try{ if(!CLOUD || !CLOUD.user) return; clearTimeout(C
 
 /* ----- Cloud sync UI actions ----- */
 async function cloudSaveConfig(){
-  const url=($('#cf_url')?.value||'').trim().replace(/\/$/,''); const key=($('#cf_key')?.value||'').trim();
+  let url=($('#cf_url')?.value||'').trim(); try{ url=new URL(url).origin; }catch(e){}   // accept full URLs incl. /rest/v1
+  const key=($('#cf_key')?.value||'').trim();
   if(!/^https:\/\/.+\.supabase\.co$/.test(url)){ toast('Enter your Supabase URL (https://xxx.supabase.co)','⚠'); return; }
   if(key.length<30){ toast('Enter your anon (public) key','⚠'); return; }
   localStorage.setItem('atlas.cloudcfg', JSON.stringify({SUPABASE_URL:url, SUPABASE_ANON_KEY:key}));
